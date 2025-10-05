@@ -136,7 +136,7 @@ Loggrep automatically detects and parses common timestamp formats, including:
 * Custom formats: Add more regex patterns to detect_timestamp_format() if needed.
 
 ## License
-This project is licensed under the Apache License. See LICENSE for details.
+This project is licensed under the Apache-2.0 License. See LICENSE for details.
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request.
