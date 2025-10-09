@@ -2,6 +2,10 @@
 
 **Loggrep** is a powerful command-line tool for searching log files, designed to work with timestamps and support advanced features like regex, invert match, context lines, and color output. It’s inspired by `grep` but tailored for log files, allowing you to search only after a specific startup time.
 
+This last item is the crucial feature - you want to look at log files, e.g. on android after startup - you start up the app on your phone and you get a pile of lines that are irrelevant that happened in the past... who cares - that's where loggrep comes in - it filters out all the old stuff.
+
+ps. this was vibe coded - it works for me - if you spot any issues just submit a pull request or a bug.
+
 ---
 
 ## **Features**
