@@ -71,11 +71,17 @@ def run_loggrep(args, input_data=None, expect_error=False):
     """Helper function to run loggrep with given arguments and input."""
     # Use PYTHONPATH to ensure we can import our modules for coverage
     import os
+    import sys
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
 
-    cmd = [str(LOGGREP_PATH)] + args
+    # On Windows, run with python explicitly to avoid executable issues
+    if sys.platform == "win32":
+        cmd = [sys.executable, str(LOGGREP_PATH)] + args
+    else:
+        cmd = [str(LOGGREP_PATH)] + args
+        
     process = subprocess.run(
         cmd, input=input_data, text=True, capture_output=True, cwd=TEST_DIR, env=env
     )
@@ -660,7 +666,13 @@ class TestErrorHandling:
         import tempfile
         import os
         import stat
+        import sys
         
+        # Skip on Windows as it doesn't have getuid and permission model is different
+        if sys.platform == "win32":
+            import pytest
+            pytest.skip("Permission test not applicable on Windows")
+            
         # Create a temporary file and make it unreadable
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
             f.write("test content\n")
@@ -668,7 +680,7 @@ class TestErrorHandling:
         
         try:
             # Remove read permissions - use different approach for Docker/root
-            if os.getuid() == 0:  # Running as root (common in Docker)
+            if hasattr(os, 'getuid') and os.getuid() == 0:  # Running as root (common in Docker)
                 # Skip this test when running as root since root can read any file
                 import pytest
                 pytest.skip("Permission test not applicable when running as root")
