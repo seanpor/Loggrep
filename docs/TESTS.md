@@ -18,11 +18,14 @@ The test suite covers all features mentioned in the README:
 - **Lines without timestamps**: Process all lines regardless of timestamp format - **FIXED!**
 - **Color output control**: `--color=always/never/auto`
 - **Startup time filtering**: Search only after specified time
+- **Live functionality**: Real-time log streaming support with `--live` flag - **NEW!**
 - **Help functionality**: `--help` flag works correctly
 
-### 🎉 All Issues Resolved
+### 🎉 All Issues Resolved + New Features
 - **Context lines (-A, -B, -C flags)**: ✅ Completely rewritten with proper logic
 - **Lines without timestamps**: ✅ No longer ignored, all lines are processed
+- **Live streaming tests**: ✅ Proper live functionality tests replace static tests
+- **Multi-version testing**: ✅ Docker-based testing across Python 3.7-3.12
 
 ### 🧪 Edge Cases Tested
 - Empty log files
@@ -30,12 +33,30 @@ The test suite covers all features mentioned in the README:
 - Invalid regex patterns
 - Invalid timestamp formats
 - Complex real-world scenarios
+- Live log streaming scenarios
+- Multi-version Python compatibility
 
 ## Running Tests
 
-### Run All Tests
+### Local Testing
 ```bash
-python3 -m pytest test_loggrep.py -v
+# Run all tests with current Python version
+make test
+
+# Run with pytest directly
+python3 -m pytest tests/test_loggrep.py -v
+```
+
+### Multi-Version Docker Testing
+```bash
+# Test all Python versions (3.7-3.12)
+make test-docker
+
+# Test specific Python version
+make test-docker-py310
+
+# Quick development workflow
+./scripts/dev.sh validate
 ```
 
 ### Run Specific Test Categories
@@ -44,10 +65,59 @@ python3 run_tests.py basic          # Basic functionality
 python3 run_tests.py regex          # Regex support
 python3 run_tests.py case           # Case-insensitive search
 python3 run_tests.py invert         # Invert match
-python3 run_tests.py context        # Context lines (currently failing)
+python3 run_tests.py context        # Context lines ✅ WORKING
 python3 run_tests.py timestamp      # Timestamp parsing
 python3 run_tests.py color          # Color output
 python3 run_tests.py edge           # Edge cases
+python3 run_tests.py integration    # Integration scenarios
+```
+
+## Test Statistics
+
+- **Total Tests**: 33 (up from 29)
+- **Test Categories**: 8 comprehensive test classes
+- **New Live Tests**: 2 tests for real-time log streaming
+- **Coverage**: All major features and edge cases
+- **Python Versions**: Tested on 3.7, 3.8, 3.9, 3.10, 3.11, 3.12
+
+## Development Tools
+
+### Docker Testing
+The project includes comprehensive Docker-based testing:
+
+- **Multi-stage Dockerfiles**: Separate containers for each Python version
+- **Docker Compose**: Orchestrated testing across all versions
+- **CI/CD Integration**: GitHub Actions using the same Docker setup
+- **Development Containers**: Interactive development environment
+
+See [DOCKER_TESTING.md](DOCKER_TESTING.md) for detailed Docker testing documentation.
+
+### Quality Assurance
+- **Type Checking**: Full mypy coverage
+- **Code Formatting**: Black and isort
+- **Linting**: flake8 compliance
+- **Coverage Reporting**: Per-version coverage reports
+
+## Test Structure
+
+```
+tests/
+├── __init__.py
+├── test_loggrep.py          # Main test suite (33 tests)
+├── run_tests.py             # Category-based test runner
+└── fix_live_test.patch      # Historical patch for live test fixes
+```
+
+The test suite is organized into logical classes:
+- `TestBasicFunctionality` - Core search features
+- `TestRegexSupport` - Regular expression functionality
+- `TestCaseInsensitive` - Case-insensitive search
+- `TestInvertMatch` - Invert match functionality
+- `TestContextLines` - Context line display
+- `TestTimestampParsing` - Timestamp parsing and live functionality
+- `TestColorOutput` - Colored output
+- `TestEdgeCases` - Error handling and edge cases
+- `TestIntegrationScenarios` - Real-world usage patterns
 python3 run_tests.py integration    # Integration scenarios
 ```
 

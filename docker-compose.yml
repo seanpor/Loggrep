@@ -1,11 +1,17 @@
-version: "3.8"
 services:
   test_py312:
     build:
       context: .
       target: py312
-    command: bash -c "pytest -v"
-    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage.xml -v"
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage_py312.xml -v"
+    volumes:
+      - .:/app
+
+  test_py311:
+    build:
+      context: .
+      target: py311
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage_py311.xml -v"
     volumes:
       - .:/app
 
@@ -13,8 +19,15 @@ services:
     build:
       context: .
       target: py310
-    command: bash -c "pytest -v"
-    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage.xml -v"
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage_py310.xml -v"
+    volumes:
+      - .:/app
+
+  test_py39:
+    build:
+      context: .
+      target: py39
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage_py39.xml -v"
     volumes:
       - .:/app
 
@@ -22,9 +35,49 @@ services:
     build:
       context: .
       target: py38
-    command: bash -c "pytest -v"
-    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage.xml -v"
-
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage_py38.xml -v"
     volumes:
       - .:/app
+
+  test_py37:
+    build:
+      context: .
+      target: py37
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage_py37.xml -v"
+    volumes:
+      - .:/app
+
+  # Run all Python versions in sequence
+  test_all:
+    image: docker:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+    working_dir: /workspace
+    command: sh -c "
+      echo '=== Testing Python 3.7 ===' &&
+      docker-compose run --rm test_py37 &&
+      echo '=== Testing Python 3.8 ===' &&
+      docker-compose run --rm test_py38 &&
+      echo '=== Testing Python 3.9 ===' &&
+      docker-compose run --rm test_py39 &&
+      echo '=== Testing Python 3.10 ===' &&
+      docker-compose run --rm test_py310 &&
+      echo '=== Testing Python 3.11 ===' &&
+      docker-compose run --rm test_py311 &&
+      echo '=== Testing Python 3.12 ===' &&
+      docker-compose run --rm test_py312 &&
+      echo '=== All tests completed ==='
+      "
+
+  # Additional service for manual testing and development
+  dev:
+    build:
+      context: .
+      target: py312
+    command: bash
+    volumes:
+      - .:/app
+    stdin_open: true
+    tty: true
 

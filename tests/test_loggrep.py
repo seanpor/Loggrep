@@ -18,6 +18,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -345,18 +348,147 @@ class TestTimestampParsing:
             os.unlink(temp_file)
 
     def test_live_flag_functionality(self):
-        """Test that --live flag works for real-time log streaming."""
-        from datetime import datetime, timedelta
+        """Test that --live flag works for real-time log streaming simulation."""
+        import subprocess
+        import threading
+        import time
+        from datetime import datetime
+        
+        # Use async bash to simulate live log streaming
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
+        
+        # Start loggrep in live mode
+        cmd = [str(LOGGREP_PATH), "ERROR", "--live"]
+        process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            cwd=TEST_DIR
+        )
+        
+        try:
+            # Generate log entries in real-time
+            now = datetime.now()
+            
+            # Send an old log entry (should be filtered out)
+            old_entry = f"{(now - timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Old error message\n"
+            
+            # Send a future log entry (should appear - this simulates live streaming)
+            future_entry = f"{(now + timedelta(seconds=2)).strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Future error message\n"
+            
+            # Combine all input
+            input_data = old_entry + future_entry
+            
+            # Send all input and get output
+            stdout, stderr = process.communicate(input=input_data, timeout=5)
+            
+            # Verify that only future entries appear (old ones filtered out)
+            # This is the expected behavior for live mode - it filters based on startup time
+            assert "Future error message" in stdout
+            assert "Old error message" not in stdout
+            
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            pytest.fail("Live test timed out")
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait()
 
-        # Create log data with recent timestamp
-        now = datetime.now()
-        recent_time = now + timedelta(seconds=1)
-
-        log_data = f"""{recent_time.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Live log message
-"""
-
-        result = run_loggrep(["ERROR", "--live"], input_data=log_data)
-        assert "Live log message" in result.stdout
+    def test_live_streaming_simulation(self):
+        """Test live streaming like 'tail -f' or 'adb logcat' scenarios."""
+        import subprocess
+        import time
+        from datetime import datetime
+        
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
+        
+        # Start loggrep in live mode
+        cmd = [str(LOGGREP_PATH), "ActivityManager", "--live"]
+        process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            cwd=TEST_DIR
+        )
+        
+        output_lines = []
+        
+        def read_output():
+            """Read output from process in separate thread."""
+            try:
+                while True:
+                    line = process.stdout.readline()
+                    if not line:
+                        break
+                    output_lines.append(line.strip())
+            except:
+                pass
+        
+        output_thread = threading.Thread(target=read_output, daemon=True)
+        output_thread.start()
+        
+        try:
+            now = datetime.now()
+            
+            # Simulate old log entries (should be filtered)
+            old_entries = [
+                f"{(now - timedelta(minutes=30)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Old activity start",
+                f"{(now - timedelta(minutes=20)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Old activity pause",
+            ]
+            
+            # Simulate current/recent log entries (should appear)
+            future_entries = [
+                f"{(now + timedelta(seconds=1)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Future activity launch",
+                f"{(now + timedelta(seconds=2)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Recent activity resume",
+            ]
+            
+            # Send old entries first
+            for entry in old_entries:
+                process.stdin.write(entry + "\n")
+                process.stdin.flush()
+                time.sleep(0.05)  # Small delay to simulate real streaming
+            
+            # Send current entries
+            for entry in future_entries:
+                process.stdin.write(entry + "\n")
+                process.stdin.flush()
+                time.sleep(0.05)
+            
+            # Give some time for processing
+            time.sleep(0.2)
+            
+            # Close stdin to signal end
+            process.stdin.close()
+            
+            # Wait for process to finish
+            process.wait(timeout=3)
+            
+            # Check results
+            output_text = '\n'.join(output_lines)
+            
+            # Should show current activities but not old ones
+            assert "Future activity launch" in output_text
+            assert "Recent activity resume" in output_text
+            assert "Old activity start" not in output_text
+            assert "Old activity pause" not in output_text
+            
+        except subprocess.TimeoutExpired:
+            process.kill()
+            pytest.fail("Live streaming test timed out")
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait()
 
 
 class TestColorOutput:

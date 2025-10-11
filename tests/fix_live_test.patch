@@ -1,0 +1,33 @@
+diff --git a/tests/test_loggrep.py b/tests/test_loggrep.py
+index abc1234..def5678 100644
+--- a/tests/test_loggrep.py
++++ b/tests/test_loggrep.py
+@@ -310,16 +310,30 @@ class TestTimestampParsing:
+         assert "Recent message should appear" in result.stdout
+
+-    def test_stdin_defaults_to_current_time(self):
+-        log_data = (
+-            "2025-01-01 10:00:00 ERROR Old message\n"
+-            "2025-01-01 11:00:00 ERROR Recent message should appear\n"
+-        )
+-        result = run_loggrep(["ERROR", "--live"], input_data=log_data)
+-        assert "Recent message should appear" in result.stdout
++    def test_stdin_defaults_to_current_time(self):
++        from datetime import datetime, timedelta
++        import pytz
++
++        # Generate log lines with timestamps from the last 5 seconds
++        now = datetime.now(pytz.utc)
++        log_lines = []
++        for i in range(5):
++            ts = now - timedelta(seconds=i)
++            log_lines.append(
++                f"{ts.strftime('%Y-%m-%d %H:%M:%S')} ERROR Live log message {i}\n"
++            )
++        log_data = "".join(log_lines)
++
++        # Run loggrep with --live
++        result = run_loggrep(["ERROR", "--live"], input_data=log_data)
++
++        # Assert that at least one of the recent messages appears in stdout
++        assert any(f"Live log message {i}" in result.stdout for i in range(5))

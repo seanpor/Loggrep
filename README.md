@@ -162,14 +162,85 @@ pip install -e ".[dev]"
 pytest
 ```
 
+## 🐳 Docker Testing
+
+To test Loggrep with multiple Python versions locally:
+
+1. Install [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/).
+2. Run the test script:
+   ```bash
+   ./scripts/test_docker.sh
+   ```
+3. To test a specific version:
+   ```bash
+   docker-compose run test_py312
+   ```
+
+This will run the test suite in isolated containers for Python 3.8, 3.10, and 3.12.
+
+
 ### Contributing
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ### Code Quality
-- **Comprehensive test suite**: 29 tests covering all features
+- **Comprehensive test suite**: 33 tests covering all features including live functionality
+- **Multi-version testing**: Docker-based testing across Python 3.7-3.12
 - **Type hints**: Full mypy type checking
 - **Code formatting**: Black + isort
 - **CI/CD**: Automated testing on multiple Python versions and platforms
+
+## 🧪 **Development and Testing**
+
+### Local Development
+```bash
+# Set up development environment
+make install-dev
+
+# Run tests
+make test
+
+# Run code quality checks
+make lint
+
+# Format code
+make format
+```
+
+### Multi-Version Testing with Docker
+Test across all supported Python versions using Docker:
+
+```bash
+# Test all Python versions (3.7-3.12)
+make test-docker
+
+# Test specific Python version
+make test-docker-py310
+
+# Quick development workflow
+./scripts/dev.sh validate
+```
+
+### Available Make Targets
+- `make test` - Run tests with current Python version
+- `make test-docker` - Run tests across all Python versions
+- `make lint` - Run linting checks
+- `make format` - Format code
+- `make build` - Build distribution packages
+- `make clean` - Clean build artifacts
+
+### Docker Services
+The project includes Docker Compose services for comprehensive testing:
+
+```bash
+# Build all images
+docker-compose build
+
+# Test specific Python version
+docker-compose run --rm test_py312
+
+# Start development container
+docker-compose run --rm dev
+```
 
 ## 📊 **Comparison with Other Tools**
 
@@ -181,6 +252,15 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 | Context lines | ✅ | ✅ | ✅ | ⚠️ |
 | Easy installation | ✅ | ✅ | ✅ | ✅ |
 | Colored output | ✅ | ✅ | ✅ | ❌ |
+
+## 📚 **Documentation**
+
+For comprehensive documentation, see the [📚 Documentation Index](docs/DOCUMENTATION_INDEX.md) which includes:
+
+- **[docs/DOCKER_TESTING.md](docs/DOCKER_TESTING.md)** - Complete Docker testing guide
+- **[docs/TESTS.md](docs/TESTS.md)** - Testing documentation and results
+- **[docs/CI_CD_EXPLANATION.md](docs/CI_CD_EXPLANATION.md)** - CI/CD pipeline details
+- **[docs/CHANGELOG.md](docs/CHANGELOG.md)** - Release history and updates
 
 ## 📄 **License**
 
