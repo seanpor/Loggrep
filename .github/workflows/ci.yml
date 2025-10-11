@@ -50,13 +50,15 @@ jobs:
         
     - name: Type checking with mypy
       run: |
-        export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
         mypy src --ignore-missing-imports || echo "Type checking completed with warnings"
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
         
     - name: Test with pytest
       run: |
-        export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
         pytest tests/ --cov=src/loggrep --cov-report=xml --cov-report=html
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
         
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
