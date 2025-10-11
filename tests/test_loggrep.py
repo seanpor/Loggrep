@@ -358,14 +358,19 @@ class TestTimestampParsing:
         import subprocess
         import threading
         import time
+        import sys
         from datetime import datetime
         
         # Use async bash to simulate live log streaming
         env = os.environ.copy()
         env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
         
-        # Start loggrep in live mode
-        cmd = [str(LOGGREP_PATH), "ERROR", "--live"]
+        # Build command with Windows compatibility
+        if sys.platform == "win32":
+            cmd = [sys.executable, str(LOGGREP_PATH), "ERROR", "--live"]
+        else:
+            cmd = [str(LOGGREP_PATH), "ERROR", "--live"]
+            
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -410,13 +415,18 @@ class TestTimestampParsing:
         """Test live streaming like 'tail -f' or 'adb logcat' scenarios."""
         import subprocess
         import time
+        import sys
         from datetime import datetime
         
         env = os.environ.copy()
         env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
         
-        # Start loggrep in live mode
-        cmd = [str(LOGGREP_PATH), "ActivityManager", "--live"]
+        # Build command with Windows compatibility
+        if sys.platform == "win32":
+            cmd = [sys.executable, str(LOGGREP_PATH), "ActivityManager", "--live"]
+        else:
+            cmd = [str(LOGGREP_PATH), "ActivityManager", "--live"]
+            
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -701,12 +711,17 @@ class TestErrorHandling:
     def test_directory_error(self):
         """Test handling when file argument is a directory."""
         import tempfile
+        import sys
         
         # Use a temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
             result = run_loggrep(["test", "--file", temp_dir], expect_error=True)
             assert result.returncode == 2
-            assert "Is a directory" in result.stderr
+            # Windows shows "Permission denied" for directories, Unix shows "Is a directory"
+            if sys.platform == "win32":
+                assert "Permission denied" in result.stderr
+            else:
+                assert "Is a directory" in result.stderr
 
     def test_file_not_found_error(self):
         """Test handling of nonexistent file."""
@@ -719,13 +734,20 @@ class TestErrorHandling:
         """Test graceful handling of broken pipe."""
         import subprocess
         import os
+        import sys
         
         # Create a large file
         temp_file = create_temp_logfile("line with content\n" * 1000)
         try:
+            # Build command with Windows compatibility
+            if sys.platform == "win32":
+                cmd = [sys.executable, str(LOGGREP_PATH), "content", "--file", temp_file]
+            else:
+                cmd = [str(LOGGREP_PATH), "content", "--file", temp_file]
+                
             # Start loggrep process
             process = subprocess.Popen(
-                [str(LOGGREP_PATH), "content", "--file", temp_file],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
