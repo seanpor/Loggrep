@@ -7,7 +7,7 @@ making it perfect for analyzing logs from specific points in time.
 
 __version__ = "1.0.0"
 __author__ = "Sean"
-__email__ = "your.email@example.com"
+__email__ = "seanpor@acm.org"
 __license__ = "Apache-2.0"
 
 from .core import LogSearcher
