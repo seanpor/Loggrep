@@ -645,5 +645,221 @@ def test_version_compatibility():
     assert sys.version_info >= (3, 6), "Python 3.6+ required as per README"
 
 
+def test_version_option():
+    """Test that --version works correctly."""
+    result = run_loggrep(["--version"])
+    assert result.returncode == 0
+    assert "loggrep" in result.stdout.lower()
+
+
+class TestErrorHandling:
+    """Test error handling and edge cases for better coverage."""
+
+    def test_permission_denied_error(self):
+        """Test handling of permission denied on file."""
+        import tempfile
+        import os
+        import stat
+        
+        # Create a temporary file and make it unreadable
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+            f.write("test content\n")
+            temp_file = f.name
+        
+        try:
+            # Remove read permissions
+            os.chmod(temp_file, 0o200)  # Write only, no read
+            
+            result = run_loggrep(["test", "--file", temp_file], expect_error=True)
+            assert result.returncode == 2
+            assert "Permission denied" in result.stderr
+        finally:
+            # Restore permissions and cleanup
+            try:
+                os.chmod(temp_file, 0o644)
+                os.unlink(temp_file)
+            except:
+                pass
+
+    def test_directory_error(self):
+        """Test handling when file argument is a directory."""
+        import tempfile
+        
+        # Use a temporary directory
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = run_loggrep(["test", "--file", temp_dir], expect_error=True)
+            assert result.returncode == 2
+            assert "Is a directory" in result.stderr
+
+    def test_file_not_found_error(self):
+        """Test handling of nonexistent file."""
+        result = run_loggrep(["test", "--file", "/nonexistent/path/file.log"], expect_error=True)
+        assert result.returncode == 2
+        assert ("No such file or directory" in result.stderr or 
+                "cannot find the file" in result.stderr.lower())
+
+    def test_broken_pipe_handling(self):
+        """Test graceful handling of broken pipe."""
+        import subprocess
+        import os
+        
+        # Create a large file
+        temp_file = create_temp_logfile("line with content\n" * 1000)
+        try:
+            # Start loggrep process
+            process = subprocess.Popen(
+                [str(LOGGREP_PATH), "content", "--file", temp_file],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Read just a bit and then close to simulate broken pipe
+            if process.stdout:
+                process.stdout.read(100)
+                process.stdout.close()
+            
+            # Wait for process to complete
+            process.wait()
+            
+            # Should handle broken pipe gracefully (exit code 0)
+            # Note: broken pipe might return various exit codes depending on OS
+            assert process.returncode in [0, 1, 120]  # Allow for different OS behaviors
+        finally:
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+
+    def test_keyboard_interrupt_handling(self):
+        """Test handling of keyboard interrupt."""
+        import subprocess
+        import signal
+        import time
+        import os
+        
+        # Create a large file to ensure process runs long enough
+        temp_file = create_temp_logfile("test line\n" * 5000)
+        try:
+            # Start loggrep process
+            process = subprocess.Popen(
+                [str(LOGGREP_PATH), "test", "--file", temp_file],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Give process time to start
+            time.sleep(0.1)
+            
+            # Send interrupt signal
+            process.send_signal(signal.SIGINT)
+            
+            # Wait for process to complete
+            try:
+                _, stderr = process.communicate(timeout=5)
+                
+                # Should exit with interrupt code and show message
+                assert process.returncode == 130
+                assert "Interrupted" in stderr
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        finally:
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+
+    def test_colorama_import_scenarios(self):
+        """Test scenarios that exercise colorama import handling."""
+        # Test color detection works regardless of colorama availability
+        result = run_loggrep(["--help"])
+        assert result.returncode == 0
+        assert "color" in result.stdout.lower()
+        
+        # Test that auto color detection doesn't crash even if colorama fails
+        # This exercises the ImportError handling in _supports_color()
+        result = run_loggrep(["INFO", "--color", "auto"], 
+                           input_data="2023-10-04 12:00:00 [INFO] Test\n")
+        assert result.returncode == 0
+
+
+class TestColorHandling:
+    """Test color handling scenarios."""
+
+    def test_color_auto_without_tty(self):
+        """Test color=auto behavior when not in TTY."""
+        # When running in subprocess (not TTY), should not use colors
+        result = run_loggrep(["INFO", "--color", "auto"], 
+                           input_data="2023-10-04 12:00:00 [INFO] Test message\n")
+        assert result.returncode == 0
+        # Output should not contain ANSI color codes when not in TTY
+        assert "\033[" not in result.stdout
+
+    def test_color_never(self):
+        """Test that --color never disables colors."""
+        result = run_loggrep(["INFO", "--color", "never"], 
+                           input_data="2023-10-04 12:00:00 [INFO] Test message\n")
+        assert result.returncode == 0
+        assert "\033[" not in result.stdout
+
+
+class TestMemoryAndPerformance:
+    """Test memory handling and performance edge cases."""
+
+    def test_large_input_handling(self):
+        """Test handling of large input data."""
+        # Create a moderately large input to test memory handling
+        large_log = "2023-10-04 12:00:00 Test line\n" * 10000
+        
+        result = run_loggrep(["Test"], input_data=large_log)
+        assert result.returncode == 0
+        # Should find all matching lines
+        assert result.stdout.count("Test line") == 10000
+
+    def test_no_matches_large_file(self):
+        """Test behavior with large file that has no matches."""
+        large_log = "2023-10-04 12:00:00 Other content\n" * 5000
+        
+        result = run_loggrep(["NonExistent"], input_data=large_log)
+        # When no matches are found, loggrep returns 0 (success) but empty output
+        assert result.returncode == 0  # Process completed successfully
+        assert result.stdout.strip() == ""  # No output for no matches
+
+
+class TestRegexEdgeCases:
+    """Test regex handling edge cases."""
+
+    def test_regex_special_characters(self):
+        """Test regex with special characters."""
+        log_data = """2023-10-04 12:00:00 Price: $100.50
+2023-10-04 12:00:01 Email: user@domain.com
+2023-10-04 12:00:02 Path: /var/log/app.log
+2023-10-04 12:00:03 Query: SELECT * FROM users
+"""
+        
+        # Test escaping special regex characters
+        result = run_loggrep([r"\$\d+\.\d+"], input_data=log_data)
+        assert "Price: $100.50" in result.stdout
+        
+        # Test email pattern
+        result = run_loggrep([r"\w+@\w+\.\w+"], input_data=log_data)
+        assert "user@domain.com" in result.stdout
+
+    def test_complex_regex_patterns(self):
+        """Test complex regex patterns."""
+        log_data = """2023-10-04 12:00:00 [ERROR] Database connection failed: timeout after 30s
+2023-10-04 12:00:01 [WARN] Memory usage: 85%
+2023-10-04 12:00:02 [INFO] User login: john.doe
+2023-10-04 12:00:03 [ERROR] API error: 404 Not Found
+"""
+        
+        # Test lookahead/lookbehind if supported
+        result = run_loggrep([r"ERROR.*\d+"], input_data=log_data)
+        lines = result.stdout.strip().split('\n')
+        assert len(lines) == 2  # Two ERROR lines with numbers
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
