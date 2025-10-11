@@ -40,11 +40,13 @@ jobs:
         
     - name: Check code formatting with black
       run: |
-        black --check src tests || echo "Code formatting check completed"
+        black --check src tests 2>&1 && echo "✅ Code formatting is correct" || echo "⚠️ Code formatting issues found - run 'black src tests' to fix"
+      continue-on-error: true
         
     - name: Check imports with isort
       run: |
-        isort --check-only src tests || echo "Import sorting check completed"
+        isort --check-only src tests 2>&1 && echo "✅ Import sorting is correct" || echo "⚠️ Import sorting issues found - run 'isort src tests' to fix"
+      continue-on-error: true
         
     - name: Type checking with mypy
       run: |

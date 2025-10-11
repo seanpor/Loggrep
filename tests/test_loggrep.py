@@ -15,7 +15,6 @@ Tests all functionality promised in the README:
 """
 
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -70,9 +69,10 @@ def run_loggrep(args, input_data=None, expect_error=False):
     """Helper function to run loggrep with given arguments and input."""
     # Use PYTHONPATH to ensure we can import our modules for coverage
     import os
+
     env = os.environ.copy()
-    env['PYTHONPATH'] = str(TEST_DIR / "src") + ":" + env.get('PYTHONPATH', '')
-    
+    env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
+
     cmd = [str(LOGGREP_PATH)] + args
     process = subprocess.run(
         cmd, input=input_data, text=True, capture_output=True, cwd=TEST_DIR, env=env
