@@ -1,0 +1,11 @@
+include README.md
+include CHANGELOG.md
+include LICENSE
+include TESTS.md
+include TEST_SUMMARY.md
+recursive-include src/loggrep *.py
+recursive-include src/loggrep py.typed
+recursive-include tests *.py
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .pytest_cache
