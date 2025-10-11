@@ -7,6 +7,7 @@ timestamp filtering, and context line management.
 
 import re
 import sys
+from datetime import datetime
 from typing import Optional, TextIO, List, Iterator, Tuple
 from collections import deque
 
@@ -73,11 +74,12 @@ class LogSearcher:
             return line
         return line.replace(match.group(), f"{Fore.RED}{match.group()}{Style.RESET_ALL}")
     
-    def search_stream(self, input_stream: TextIO) -> Iterator[str]:
+    def search_stream(self, input_stream: TextIO, use_current_time_default: bool = False) -> Iterator[str]:
         """Search through a stream of log lines.
         
         Args:
             input_stream: Input stream to search through
+            use_current_time_default: If True and no startup_time specified, use current time
             
         Yields:
             Lines that match the search criteria with context
@@ -87,6 +89,13 @@ class LogSearcher:
         after_count = 0
         first_timestamp = None
         startup_time = self.startup_time
+        
+        # If no startup time specified and we're reading from stdin (streaming), use current time
+        # But only if the input appears to be live/streaming (i.e., we detect it's potentially real-time)
+        if not startup_time and use_current_time_default:
+            # For stdin, we'll be more conservative and only use current time if explicitly needed
+            # The caller can control this behavior
+            startup_time = datetime.now()
         
         # Read all lines to enable proper context handling
         try:
@@ -106,8 +115,8 @@ class LogSearcher:
                 ts = parse_timestamp(ts_str)
                 if ts and not first_timestamp:
                     first_timestamp = ts
-                # Use first timestamp as startup time if none specified
-                if not startup_time and first_timestamp:
+                # Use first timestamp as startup time if none specified and not using current time
+                if not startup_time and not use_current_time_default and first_timestamp:
                     startup_time = first_timestamp
                     in_range = True
                 # Check if we're past startup time
@@ -157,7 +166,7 @@ class LogSearcher:
             Lines that match the search criteria with context
         """
         with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-            yield from self.search_stream(f)
+            yield from self.search_stream(f, use_current_time_default=False)
     
     def search_stdin(self) -> Iterator[str]:
         """Search through stdin.
@@ -165,4 +174,4 @@ class LogSearcher:
         Yields:
             Lines that match the search criteria with context
         """
-        yield from self.search_stream(sys.stdin)
+        yield from self.search_stream(sys.stdin, use_current_time_default=False)

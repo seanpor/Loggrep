@@ -37,8 +37,8 @@ Examples:
   # Case-insensitive search with invert match
   loggrep -i -v "debug" --file app.log
   
-  # Android logcat filtering
-  adb logcat | loggrep "MyApp" --startup-time "$(date '+%%m-%%d %%H:%%M:%%S')"
+  # Android logcat filtering with live flag
+  adb logcat | loggrep "ActivityManager.*MyApp" --live
 
 Supported timestamp formats:
   - Unix syslog: Oct  5 14:30:02
@@ -65,8 +65,14 @@ For more information, visit: https://github.com/seanpor/Loggrep
     )
     parser.add_argument(
         "--startup-time",
-        help="Only show matches after this time (e.g., '2025-10-04 12:00:00')",
+        help="Only show matches after this time (e.g., '2025-10-04 12:00:00'). For stdin, you can use --live to default to current time.",
         default=None
+    )
+    
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="For stdin input, use current time as default startup time (useful for live log streaming like 'adb logcat')"
     )
     
     # Search options
@@ -163,6 +169,10 @@ def main(argv: List[str] = None) -> int:
             if args.file:
                 results = searcher.search_file(args.file)
             else:
+                # For stdin, use live mode if specified
+                if args.live and not args.startup_time:
+                    from datetime import datetime
+                    searcher.startup_time = datetime.now()
                 results = searcher.search_stdin()
             
             for line in results:

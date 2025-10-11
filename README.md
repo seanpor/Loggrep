@@ -19,8 +19,8 @@ Loggrep combines the power of `grep` with intelligent timestamp filtering, makin
 # Show all errors after app startup
 loggrep "ERROR" --startup-time "2025-01-15 14:30:00"
 
-# Android debugging after launching your app  
-adb logcat | loggrep "MyApp" --startup-time "$(date '+%m-%d %H:%M:%S')"
+# Android debugging with live streaming
+adb logcat | loggrep "MyApp" --live
 
 # System logs after service restart with context
 loggrep "failed" --file /var/log/syslog --startup-time "10 minutes ago" -C 3
@@ -77,8 +77,8 @@ loggrep -i "error" --file app.log
 # Invert match (show lines that DON'T match)
 loggrep -v "DEBUG" --file app.log
 
-# Force colored output
-loggrep "ERROR" --file app.log --color=always
+# Force colored output with live streaming
+loggrep "ERROR" --live --color=always
 ```
 
 ## 🎯 **Real-World Examples**
@@ -94,8 +94,8 @@ sudo loggrep "systemd.*failed" --file /var/log/syslog -C 2
 
 ### Mobile Development
 ```bash
-# Android logcat filtering after app launch
-adb logcat | loggrep "ActivityManager.*MyApp" --startup-time "$(date '+%m-%d %H:%M:%S')"
+# Android logcat filtering with live streaming
+adb logcat | loggrep "ActivityManager.*MyApp" --live
 
 # iOS simulator logs
 loggrep "MyApp" --file ~/Library/Logs/CoreSimulator/*/system.log -A 3

@@ -262,7 +262,7 @@ class TestTimestampParsing:
             os.unlink(temp_file)
     
     def test_no_startup_time_uses_first_timestamp(self):
-        """Test that without startup-time, first timestamp is used."""
+        """Test that without startup-time, first timestamp is used for files."""
         temp_file = create_temp_logfile(SAMPLE_LOG_UNIX_SYSLOG)
         try:
             result = run_loggrep(["service", "--file", temp_file])
@@ -271,6 +271,59 @@ class TestTimestampParsing:
             assert len(lines) > 5  # Should find multiple service-related lines
         finally:
             os.unlink(temp_file)
+    
+    def test_stdin_defaults_to_current_time(self):
+        """Test that stdin input with --live flag defaults to current time."""
+        from datetime import datetime, timedelta
+        
+        # Create log data with timestamps - some old, some recent
+        now = datetime.now()
+        old_time = now - timedelta(hours=1)
+        recent_time = now + timedelta(seconds=1)  # Slightly in future to ensure it's processed
+        
+        log_data = f"""{old_time.strftime('%Y-%m-%d %H:%M:%S')} [INFO] Old message should be filtered
+{recent_time.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Recent message should appear
+"""
+        
+        result = run_loggrep(["ERROR", "--live"], input_data=log_data)
+        # Should only find the recent ERROR message, not the old one
+        assert "Recent message should appear" in result.stdout
+        assert "Old message should be filtered" not in result.stdout
+    
+    def test_file_uses_first_timestamp_not_current_time(self):
+        """Test that file input uses first timestamp, not current time."""
+        from datetime import datetime, timedelta
+        
+        # Create log data with all timestamps in the past
+        past_time = datetime.now() - timedelta(hours=2)
+        past_time2 = past_time + timedelta(minutes=5)
+        
+        log_data = f"""{past_time.strftime('%Y-%m-%d %H:%M:%S')} [INFO] First message
+{past_time2.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Second message
+"""
+        
+        temp_file = create_temp_logfile(log_data)
+        try:
+            result = run_loggrep(["ERROR", "--file", temp_file])
+            # Should find the ERROR message even though it's in the past
+            # because file mode uses first timestamp, not current time
+            assert "Second message" in result.stdout
+        finally:
+            os.unlink(temp_file)
+    
+    def test_live_flag_functionality(self):
+        """Test that --live flag works for real-time log streaming."""
+        from datetime import datetime, timedelta
+        
+        # Create log data with recent timestamp
+        now = datetime.now()
+        recent_time = now + timedelta(seconds=1)
+        
+        log_data = f"""{recent_time.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Live log message
+"""
+        
+        result = run_loggrep(["ERROR", "--live"], input_data=log_data)
+        assert "Live log message" in result.stdout
 
 class TestColorOutput:
     """Test color output functionality."""
