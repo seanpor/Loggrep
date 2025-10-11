@@ -1,4 +1,20 @@
 services:
+  test_py314:
+    build:
+      context: .
+      target: py314
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v && python3 -m coverage combine && python3 -m coverage xml -o coverage_py314.xml && python3 -m coverage report"
+    volumes:
+      - .:/app
+
+  test_py313:
+    build:
+      context: .
+      target: py313
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v && python3 -m coverage combine && python3 -m coverage xml -o coverage_py313.xml && python3 -m coverage report"
+    volumes:
+      - .:/app
+
   test_py312:
     build:
       context: .
@@ -67,6 +83,10 @@ services:
       docker-compose run --rm test_py311 &&
       echo '=== Testing Python 3.12 ===' &&
       docker-compose run --rm test_py312 &&
+      echo '=== Testing Python 3.13 ===' &&
+      docker-compose run --rm test_py313 &&
+      echo '=== Testing Python 3.14 ===' &&
+      docker-compose run --rm test_py314 &&
       echo '=== All tests completed ==='
       "
 
@@ -74,7 +94,7 @@ services:
   dev:
     build:
       context: .
-      target: py312
+      target: py314
     command: bash
     volumes:
       - .:/app

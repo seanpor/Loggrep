@@ -1,3 +1,17 @@
+# Python 3.14
+FROM python:3.14-slim as py314
+WORKDIR /app
+COPY . .
+RUN pip install --upgrade pip && \
+    pip install -e ".[dev]"
+
+# Python 3.13
+FROM python:3.13-slim as py313
+WORKDIR /app
+COPY . .
+RUN pip install --upgrade pip && \
+    pip install -e ".[dev]"
+
 # Python 3.12
 FROM python:3.12-slim as py312
 WORKDIR /app

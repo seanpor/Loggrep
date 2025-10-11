@@ -176,7 +176,7 @@ To test Loggrep with multiple Python versions locally:
    docker-compose run test_py312
    ```
 
-This will run the test suite in isolated containers for Python 3.8, 3.10, and 3.12.
+This will run the test suite in isolated containers for Python 3.8, 3.10, 3.12, 3.13, and 3.14.
 
 
 ### Contributing
@@ -184,7 +184,7 @@ We welcome contributions! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md
 
 ### Code Quality
 - **Comprehensive test suite**: 33 tests covering all features including live functionality
-- **Multi-version testing**: Docker-based testing across Python 3.7-3.12
+- **Multi-version testing**: Docker-based testing across Python 3.7-3.14
 - **Type hints**: Full mypy type checking
 - **Code formatting**: Black + isort
 - **CI/CD**: Automated testing on multiple Python versions and platforms

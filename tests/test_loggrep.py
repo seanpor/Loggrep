@@ -655,10 +655,10 @@ def test_help_option():
 
 def test_version_compatibility():
     """Test that the script runs with the documented Python version."""
-    # The README specifies Python 3.6+, ensure we're compatible
+    # The README specifies Python 3.7+, ensure we're compatible
     import sys
 
-    assert sys.version_info >= (3, 6), "Python 3.6+ required as per README"
+    assert sys.version_info >= (3, 7), "Python 3.7+ required as per README"
 
 
 def test_version_option():
