@@ -113,50 +113,69 @@ def main():
     # Determine if color should be used
     use_color = args.color == "always" or (args.color == "auto" and COLOR_AVAILABLE and sys.stdout.isatty())
 
-    # Handle context lines
-    before_lines = deque(maxlen=args.B)
-    after_lines = deque(maxlen=args.A)
-    context = args.A + args.B
-
     startup_time = parse_timestamp(args.startup_time) if args.startup_time else None
     input_stream = open(args.file, "r") if args.file else sys.stdin
     first_timestamp = None
+    
+    # Handle context lines
+    before_buffer = deque(maxlen=max(args.B, args.C) if max(args.B, args.C) > 0 else None)
+    after_count = 0
+    after_needed = 0
 
     try:
-        for line in input_stream:
+        lines = list(input_stream)
+        in_range = not startup_time  # If no startup time, process all lines
+        
+        for i, line in enumerate(lines):
             ts_str = detect_timestamp_format(line)
+            ts = None
+            
+            # Parse timestamp if found
             if ts_str:
                 ts = parse_timestamp(ts_str)
                 if ts and not first_timestamp:
                     first_timestamp = ts
-                if not startup_time:
+                # Use first timestamp as startup time if none specified
+                if not startup_time and first_timestamp:
                     startup_time = first_timestamp
-                if ts and ts >= startup_time:
-                    match = pattern.search(line)
-                    if (match and not args.invert_match) or (not match and args.invert_match):
-                        if args.C:
-                            for bline in before_lines:
-                                print(bline, end="")
-                            print(highlight_match(line, match, use_color) if match else line, end="")
-                            after_lines.clear()
-                        elif args.B:
-                            for bline in before_lines:
-                                print(bline, end="")
-                            print(highlight_match(line, match, use_color) if match else line, end="")
-                            before_lines.clear()
-                        else:
-                            print(highlight_match(line, match, use_color) if match else line, end="")
-                    elif args.A and match and not args.invert_match:
-                        after_lines.append(line)
-                    elif args.B and ((match and not args.invert_match) or (not match and args.invert_match)):
-                        before_lines.clear()
+                    in_range = True
+                # Check if we're past startup time
+                if startup_time and ts and ts >= startup_time:
+                    in_range = True
+                elif startup_time and ts and ts < startup_time:
+                    in_range = False
+            
+            # Process line if we're in the time range or no timestamp filtering
+            if in_range or not startup_time:
+                match = pattern.search(line)
+                is_match = (match and not args.invert_match) or (not match and args.invert_match)
+                
+                # Handle after-context from previous matches
+                if after_count > 0:
+                    print(line, end="")
+                    after_count -= 1
+                
+                if is_match:
+                    # Print before-context lines
+                    if args.B or args.C:
+                        context_lines = max(args.B, args.C)
+                        for before_line in list(before_buffer)[-context_lines:]:
+                            print(before_line, end="")
+                    
+                    # Print the match line (with highlighting if applicable)
+                    if match:
+                        print(highlight_match(line, match, use_color), end="")
                     else:
-                        if args.B:
-                            before_lines.append(line)
-                        if args.A and after_lines:
-                            print(after_lines.popleft(), end="")
-            elif args.A and after_lines:
-                print(after_lines.popleft(), end="")
+                        print(line, end="")
+                    
+                    # Set up after-context
+                    if args.A or args.C:
+                        after_count = max(args.A, args.C)
+                
+                # Always buffer lines for potential before-context
+                if args.B or args.C:
+                    before_buffer.append(line)
+                    
     except KeyboardInterrupt:
         print("\nExiting...")
     finally:
