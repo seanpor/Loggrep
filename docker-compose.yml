@@ -1,0 +1,30 @@
+version: "3.8"
+services:
+  test_py312:
+    build:
+      context: .
+      target: py312
+    command: bash -c "pytest -v"
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage.xml -v"
+    volumes:
+      - .:/app
+
+  test_py310:
+    build:
+      context: .
+      target: py310
+    command: bash -c "pytest -v"
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage.xml -v"
+    volumes:
+      - .:/app
+
+  test_py38:
+    build:
+      context: .
+      target: py38
+    command: bash -c "pytest -v"
+    command: bash -c "pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage.xml -v"
+
+    volumes:
+      - .:/app
+
