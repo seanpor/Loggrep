@@ -7,8 +7,9 @@ ISO 8601, Android logcat, and custom formats.
 
 import re
 from typing import Optional
-
+from datetime import datetime
 from dateutil import parser
+from typing import Optional
 
 
 def detect_timestamp_format(line: str) -> Optional[str]:
@@ -41,7 +42,7 @@ def detect_timestamp_format(line: str) -> Optional[str]:
     return None
 
 
-def parse_timestamp(ts_str: str):
+def parse_timestamp(ts_str: str) -> Optional[datetime]:
     """Parse a timestamp string into a datetime object.
 
     Args:

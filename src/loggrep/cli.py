@@ -8,7 +8,8 @@ regex support, invert match, context lines, and color output.
 
 import argparse
 import sys
-from typing import List
+from typing import Optional, List
+
 
 from . import __version__
 from .core import LogSearcher
@@ -143,7 +144,7 @@ def determine_color_usage(color_arg: str) -> bool:
             return False
 
 
-def main(argv: List[str] = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """Main entry point for the loggrep command-line tool."""
     parser = create_parser()
     args = parser.parse_args(argv)

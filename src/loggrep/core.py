@@ -90,7 +90,7 @@ class LogSearcher:
             Lines that match the search criteria with context
         """
         # Handle context lines
-        before_buffer = deque(
+        before_buffer: deque = deque(
             maxlen=self.before_context if self.before_context > 0 else None
         )
         after_count = 0
@@ -109,7 +109,7 @@ class LogSearcher:
             lines = list(input_stream)
         except MemoryError:
             # For very large files, fall back to streaming mode (TODO: implement smart streaming)
-            lines = input_stream
+            lines = input_stream  # type: ignore
 
         in_range = not startup_time  # If no startup time, process all lines
 
