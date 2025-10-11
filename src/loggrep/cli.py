@@ -47,84 +47,83 @@ Supported timestamp formats:
   - Custom: Oct 05, 2025 14:30:02
 
 For more information, visit: https://github.com/seanpor/Loggrep
-        """
+        """,
     )
-    
+
     # Positional arguments
     parser.add_argument(
         "patterns",
         nargs="+",
-        help="Regex pattern(s) to search for. Multiple patterns are OR'd together."
+        help="Regex pattern(s) to search for. Multiple patterns are OR'd together.",
     )
-    
+
     # Input options
     parser.add_argument(
-        "--file", 
-        help="Log file to search (default: stdin)",
-        default=None
+        "--file", help="Log file to search (default: stdin)", default=None
     )
     parser.add_argument(
         "--startup-time",
         help="Only show matches after this time (e.g., '2025-10-04 12:00:00'). For stdin, you can use --live to default to current time.",
-        default=None
+        default=None,
     )
-    
+
     parser.add_argument(
         "--live",
         action="store_true",
-        help="For stdin input, use current time as default startup time (useful for live log streaming like 'adb logcat')"
+        help="For stdin input, use current time as default startup time (useful for live log streaming like 'adb logcat')",
     )
-    
+
     # Search options
     parser.add_argument(
-        "-i", "--ignore-case",
+        "-i",
+        "--ignore-case",
         action="store_true",
-        help="Ignore case in pattern matching"
+        help="Ignore case in pattern matching",
     )
     parser.add_argument(
-        "-v", "--invert-match",
+        "-v",
+        "--invert-match",
         action="store_true",
-        help="Show lines that do NOT match the pattern"
+        help="Show lines that do NOT match the pattern",
     )
-    
+
     # Context options
     parser.add_argument(
-        "-A", "--after-context",
+        "-A",
+        "--after-context",
         type=int,
         default=0,
         metavar="NUM",
-        help="Show NUM lines after each match"
+        help="Show NUM lines after each match",
     )
     parser.add_argument(
-        "-B", "--before-context",
+        "-B",
+        "--before-context",
         type=int,
         default=0,
         metavar="NUM",
-        help="Show NUM lines before each match"
+        help="Show NUM lines before each match",
     )
     parser.add_argument(
-        "-C", "--context",
+        "-C",
+        "--context",
         type=int,
         default=0,
         metavar="NUM",
-        help="Show NUM lines before and after each match"
+        help="Show NUM lines before and after each match",
     )
-    
+
     # Output options
     parser.add_argument(
         "--color",
         choices=["always", "never", "auto"],
         default="auto",
-        help="Control colored output (default: auto)"
+        help="Control colored output (default: auto)",
     )
-    
+
     # Version
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"loggrep {__version__}"
-    )
-    
+    parser.add_argument("--version", action="version", version=f"loggrep {__version__}")
+
     return parser
 
 
@@ -137,6 +136,7 @@ def determine_color_usage(color_arg: str) -> bool:
     else:  # auto
         try:
             from colorama import init
+
             init()
             return sys.stdout.isatty()
         except ImportError:
@@ -147,11 +147,11 @@ def main(argv: List[str] = None) -> int:
     """Main entry point for the loggrep command-line tool."""
     parser = create_parser()
     args = parser.parse_args(argv)
-    
+
     try:
         # Determine color usage
         use_color = determine_color_usage(args.color)
-        
+
         # Create searcher
         searcher = LogSearcher(
             patterns=args.patterns,
@@ -163,7 +163,7 @@ def main(argv: List[str] = None) -> int:
             use_color=use_color,
             startup_time=args.startup_time,
         )
-        
+
         # Search and output results
         try:
             if args.file:
@@ -172,12 +172,13 @@ def main(argv: List[str] = None) -> int:
                 # For stdin, use live mode if specified
                 if args.live and not args.startup_time:
                     from datetime import datetime
+
                     searcher.startup_time = datetime.now()
                 results = searcher.search_stdin()
-            
+
             for line in results:
                 print(line, end="")
-                
+
         except FileNotFoundError:
             print(f"loggrep: {args.file}: No such file or directory", file=sys.stderr)
             return 2
@@ -190,14 +191,14 @@ def main(argv: List[str] = None) -> int:
         except BrokenPipeError:
             # Handle broken pipe gracefully (e.g., when piping to head)
             return 0
-            
+
     except ValueError as e:
         print(f"loggrep: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("\nInterrupted", file=sys.stderr)
         return 130
-    
+
     return 0
 
 

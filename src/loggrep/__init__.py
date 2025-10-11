@@ -15,7 +15,7 @@ from .timestamps import detect_timestamp_format, parse_timestamp
 
 __all__ = [
     "LogSearcher",
-    "detect_timestamp_format", 
+    "detect_timestamp_format",
     "parse_timestamp",
     "__version__",
 ]

@@ -16,13 +16,14 @@ Usage:
     python3 run_tests.py --help            # Show this help
 """
 
-import sys
 import subprocess
+import sys
+
 
 def run_tests(category=None):
     """Run tests with optional category filter."""
     cmd = ["python3", "-m", "pytest", "tests/test_loggrep.py", "-v"]
-    
+
     if category:
         if category == "basic":
             cmd.extend(["-k", "TestBasicFunctionality"])
@@ -46,8 +47,9 @@ def run_tests(category=None):
             print(f"Unknown category: {category}")
             print(__doc__)
             return 1
-    
+
     return subprocess.call(cmd)
+
 
 def main():
     if len(sys.argv) > 1:
@@ -57,8 +59,9 @@ def main():
         category = sys.argv[1]
     else:
         category = None
-    
+
     return run_tests(category)
+
 
 if __name__ == "__main__":
     sys.exit(main())
