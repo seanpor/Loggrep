@@ -31,7 +31,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools wheel
-        python setup_dev.py || (pip install python-dateutil colorama pytest pytest-cov black flake8 mypy isort && pip install . || pip install -e . || true)
+        python setup_dev.py || (pip install python-dateutil colorama pytest pytest-cov black flake8 mypy isort types-python-dateutil && pip install . || pip install -e . || true)
         
     - name: Lint with flake8
       run: |
