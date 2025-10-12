@@ -13,7 +13,7 @@ PERFORMANCE OPTIMIZATIONS:
 import re
 from datetime import datetime
 from functools import lru_cache
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 from dateutil import parser as dateutil_parser
 
@@ -140,7 +140,7 @@ def detect_timestamp_format(line: str) -> Optional[str]:
     for compiled_regex, pattern_info in compiled_patterns:
         match = compiled_regex.search(line)
         if match:
-            return match.group(1)
+            return match.group(1)  # type: ignore
     return None
 
 
@@ -170,9 +170,9 @@ def parse_timestamp(ts_str: str) -> Optional[datetime]:
         fast_parse = pattern_info.get("fast_parse")  # type: ignore
         if fast_parse:
             try:
-                result = fast_parse(ts_str)  # type: ignore
+                result = fast_parse(ts_str)
                 if result:
-                    return result
+                    return result  # type: ignore
             except (ValueError, TypeError):
                 continue
 
@@ -197,5 +197,5 @@ def get_supported_formats() -> List[Dict[str, str]]:
         List of dictionaries with format information
     """
     return [
-        {"name": p["name"], "description": p["description"]} for p in TIMESTAMP_PATTERNS
+        {"name": p["name"], "description": p["description"]} for p in TIMESTAMP_PATTERNS  # type: ignore
     ]

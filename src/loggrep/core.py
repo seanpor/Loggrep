@@ -9,7 +9,7 @@ import re
 import sys
 from collections import deque
 from datetime import datetime
-from typing import Iterator, List, Optional, TextIO, Dict, Union
+from typing import Dict, Iterator, List, Optional, TextIO, Union
 
 from .timestamps import (
     detect_timestamp_format,
