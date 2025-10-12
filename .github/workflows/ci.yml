@@ -61,7 +61,14 @@ jobs:
         
     - name: Test with pytest
       run: |
-        pytest tests/ --cov=loggrep --cov-report=xml --cov-report=html --cov-report=term
+        # First run tests and collect coverage data
+        python3 -m pytest tests/ --cov=loggrep --cov-report=xml --cov-report=html --cov-report=term
+        # Then combine any parallel coverage data
+        python3 -m coverage combine || true
+        # Generate final XML report
+        python3 -m coverage xml -o coverage.xml || true
+        # Verify the coverage file was created
+        ls -la coverage.xml || echo "Coverage XML not found"
       env:
         PYTHONPATH: ${{ github.workspace }}/src
         COVERAGE_PROCESS_START: ${{ github.workspace }}/.coveragerc
@@ -75,6 +82,7 @@ jobs:
         name: loggrep-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
+        verbose: true
 
   performance:
     runs-on: ubuntu-latest
