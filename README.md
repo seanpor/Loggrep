@@ -183,7 +183,7 @@ This will run the test suite in isolated containers for Python 3.8, 3.10, 3.12, 
 We welcome contributions! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ### Code Quality
-- **Comprehensive test suite**: 33 tests covering all features including live functionality
+- **Comprehensive test suite**: 46 tests covering all features including live functionality
 - **Multi-version testing**: Docker-based testing across Python 3.7-3.14
 - **Type hints**: Full mypy type checking
 - **Code formatting**: Black + isort
@@ -210,7 +210,7 @@ make format
 Test across all supported Python versions using Docker:
 
 ```bash
-# Test all Python versions (3.7-3.12)
+# Test all Python versions (3.7-3.14)
 make test-docker
 
 # Test specific Python version

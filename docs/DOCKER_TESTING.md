@@ -4,7 +4,7 @@ This document describes the Docker-based multi-version testing setup for loggrep
 
 ## Overview
 
-The loggrep project supports Python 3.7-3.12 and uses Docker to ensure compatibility across all these versions. This setup provides:
+The loggrep project supports Python 3.7-3.14 and uses Docker to ensure compatibility across all these versions. This setup provides:
 
 - **Consistency**: Same environment across different development machines
 - **Isolation**: Each Python version runs in its own container

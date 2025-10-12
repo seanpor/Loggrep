@@ -103,7 +103,7 @@ See [DOCKER_TESTING.md](DOCKER_TESTING.md) for detailed Docker testing documenta
 ```
 tests/
 ├── __init__.py
-├── test_loggrep.py          # Main test suite (33 tests)
+├── test_loggrep.py          # Main test suite (46 tests)
 ├── run_tests.py             # Category-based test runner
 └── fix_live_test.patch      # Historical patch for live test fixes
 ```

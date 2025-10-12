@@ -5,7 +5,7 @@
 The **GitHub CI/CD (Continuous Integration/Continuous Deployment) pipeline** is an automated system that runs every time you push code to GitHub. It's now defined in `.github/workflows/test.yml` and performs these comprehensive tasks:
 
 ### **What It Does:**
-1. **🧪 Multi-Version Testing** - Tests on Python 3.7, 3.8, 3.9, 3.10, 3.11, 3.12
+1. **🧪 Multi-Version Testing** - Tests on Python 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14
 2. **🐳 Docker-Based Testing** - Uses the same Docker setup as local development
 3. **🎨 Code Quality Checks** - Ensures code formatting and style consistency  
 4. **📊 Coverage Analysis** - Measures how much of your code is tested
@@ -23,7 +23,7 @@ The CI/CD pipeline now includes:
 ### **Why It Now Works:**
 1. **Fixed Package Structure** - Proper `pyproject.toml` configuration
 2. **Docker Integration** - Consistent environments across local and CI
-3. **Comprehensive Testing** - 33 tests covering all functionality including live features
+3. **Comprehensive Testing** - 46 tests covering all functionality including live features
 4. **Quality Assurance** - Automated formatting and linting checks
 5. **Reliable Dependencies** - Fixed dependency installation issues
 
@@ -118,7 +118,7 @@ make lint && make format
 
 ### **Quality Gates:**
 All tests must pass before code can be merged:
-1. ✅ All 33 tests pass on all Python versions
+1. ✅ All 46 tests pass on all Python versions
 2. ✅ Code quality checks (flake8, mypy)
 3. ✅ Code formatting (black, isort)
 4. ✅ Package builds successfully

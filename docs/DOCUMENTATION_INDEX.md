@@ -52,7 +52,7 @@ make help                    # Show all available commands
 
 ### Primary Resources
 - **[DOCKER_TESTING.md](DOCKER_TESTING.md)** - Complete Docker guide
-- **[../Dockerfile](../Dockerfile)** - Multi-stage builds for Python 3.7-3.12
+- **[../Dockerfile](../Dockerfile)** - Multi-stage builds for Python 3.7-3.14
 - **[../docker-compose.yml](../docker-compose.yml)** - Service definitions
 - **[../scripts/test_docker.sh](../scripts/test_docker.sh)** - Testing script
 
