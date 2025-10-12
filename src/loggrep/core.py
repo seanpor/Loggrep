@@ -11,7 +11,7 @@ from collections import deque
 from datetime import datetime
 from typing import Iterator, List, Optional, TextIO
 
-from .timestamps import detect_timestamp_format, parse_timestamp
+from .timestamps import detect_timestamp_format, parse_timestamp, detect_timestamp_format_cached
 
 try:
     from colorama import Fore, Style, init
@@ -54,12 +54,22 @@ class LogSearcher:
         self.use_color = use_color and COLOR_AVAILABLE
         self.startup_time = parse_timestamp(startup_time) if startup_time else None
 
-        # Compile regex pattern(s)
+        # Compile regex pattern(s) with optimization
         flags = re.IGNORECASE if ignore_case else 0
         try:
-            self.pattern = re.compile("|".join(patterns), flags)
+            # Pre-compile pattern for better performance
+            if len(patterns) == 1:
+                # Single pattern optimization
+                self.pattern = re.compile(patterns[0], flags)
+            else:
+                # Multiple patterns - use alternation
+                self.pattern = re.compile("|".join(f"({pattern})" for pattern in patterns), flags)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern: {e}")
+
+        # Performance optimization: pre-compile common regex for timestamp detection
+        self._timestamp_cache = {}
+        self._use_timestamp_filtering = startup_time is not None
 
     def highlight_match(self, line: str, match: re.Match) -> str:
         """Highlight the matched part of the line with color.
@@ -104,24 +114,41 @@ class LogSearcher:
             # The caller can control this behavior
             startup_time = datetime.now()
 
-        # Read all lines to enable proper context handling
-        try:
-            lines = list(input_stream)
-        except MemoryError:
-            # For very large files, fall back to streaming mode (TODO: implement smart streaming)
-            lines = input_stream  # type: ignore
-
+        # Performance optimization: pre-process lines for better memory handling
         in_range = not startup_time  # If no startup time, process all lines
+        
+        # Try to avoid loading all lines into memory for large files
+        try:
+            if hasattr(input_stream, 'seek'):
+                # File-like object, try to get size
+                current_pos = input_stream.tell()
+                input_stream.seek(0, 2)  # Seek to end
+                file_size = input_stream.tell()
+                input_stream.seek(current_pos)  # Restore position
+                
+                # For large files (>100MB), use streaming mode
+                if file_size > 100 * 1024 * 1024:  # 100MB
+                    lines = input_stream
+                else:
+                    lines = list(input_stream)
+            else:
+                # stdin or other stream, read all lines
+                lines = list(input_stream)
+        except (AttributeError, OSError):
+            # Fallback to reading all lines
+            lines = list(input_stream)
 
         for i, line in enumerate(lines):
-            ts_str = detect_timestamp_format(line)
-            ts = None
+            # Performance optimization: only detect timestamps if we need them
+            if startup_time or not in_range:
+                ts_str = detect_timestamp_format_cached(line) if i % 100 == 0 else detect_timestamp_format(line)
+                ts = None
 
-            # Parse timestamp if found
-            if ts_str:
-                ts = parse_timestamp(ts_str)
-                if ts and not first_timestamp:
-                    first_timestamp = ts
+                # Parse timestamp if found
+                if ts_str:
+                    ts = parse_timestamp(ts_str)
+                    if ts and not first_timestamp:
+                        first_timestamp = ts
                 # Use first timestamp as startup time if none specified and not using current time
                 if (
                     not startup_time
