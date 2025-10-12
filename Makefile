@@ -73,6 +73,25 @@ test-docker-py311:
 test-docker-py312:
 	./scripts/test_docker.sh 3.12
 
+# Performance and profiling targets
+benchmark: ## Run comprehensive performance benchmarks
+	@echo "🚀 Running performance benchmarks..."
+	PYTHONPATH=./src python3 scripts/benchmark.py
+
+profile: ## Run performance profiling analysis
+	@echo "🔍 Running performance profiling..."
+	PYTHONPATH=./src python3 scripts/profile_loggrep.py
+
+performance-test: ## Run performance regression testing
+	@echo "📊 Running performance regression tests..."
+	PYTHONPATH=./src python3 scripts/performance_test.py
+
+benchmark-baseline: ## Save current performance as baseline
+	@echo "💾 Saving performance baseline..."
+	PYTHONPATH=./src python3 scripts/benchmark.py
+	cp benchmark_results.json benchmark_baseline.json
+	@echo "✅ Baseline saved to benchmark_baseline.json"
+
 # Code quality
 lint:
 	@echo "Running flake8..."

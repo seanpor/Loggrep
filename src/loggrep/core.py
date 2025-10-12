@@ -9,9 +9,13 @@ import re
 import sys
 from collections import deque
 from datetime import datetime
-from typing import Iterator, List, Optional, TextIO
+from typing import Iterator, List, Optional, TextIO, Dict, Union
 
-from .timestamps import detect_timestamp_format, parse_timestamp, detect_timestamp_format_cached
+from .timestamps import (
+    detect_timestamp_format,
+    detect_timestamp_format_cached,
+    parse_timestamp,
+)
 
 try:
     from colorama import Fore, Style, init
@@ -63,12 +67,14 @@ class LogSearcher:
                 self.pattern = re.compile(patterns[0], flags)
             else:
                 # Multiple patterns - use alternation
-                self.pattern = re.compile("|".join(f"({pattern})" for pattern in patterns), flags)
+                self.pattern = re.compile(
+                    "|".join(f"({pattern})" for pattern in patterns), flags
+                )
         except re.error as e:
             raise ValueError(f"Invalid regex pattern: {e}")
 
         # Performance optimization: pre-compile common regex for timestamp detection
-        self._timestamp_cache = {}
+        self._timestamp_cache: Dict[str, Optional[str]] = {}
         self._use_timestamp_filtering = startup_time is not None
 
     def highlight_match(self, line: str, match: re.Match) -> str:
@@ -116,16 +122,17 @@ class LogSearcher:
 
         # Performance optimization: pre-process lines for better memory handling
         in_range = not startup_time  # If no startup time, process all lines
-        
+
         # Try to avoid loading all lines into memory for large files
+        lines: Union[List[str], TextIO]
         try:
-            if hasattr(input_stream, 'seek'):
+            if hasattr(input_stream, "seek"):
                 # File-like object, try to get size
                 current_pos = input_stream.tell()
                 input_stream.seek(0, 2)  # Seek to end
                 file_size = input_stream.tell()
                 input_stream.seek(current_pos)  # Restore position
-                
+
                 # For large files (>100MB), use streaming mode
                 if file_size > 100 * 1024 * 1024:  # 100MB
                     lines = input_stream
@@ -141,7 +148,11 @@ class LogSearcher:
         for i, line in enumerate(lines):
             # Performance optimization: only detect timestamps if we need them
             if startup_time or not in_range:
-                ts_str = detect_timestamp_format_cached(line) if i % 100 == 0 else detect_timestamp_format(line)
+                ts_str = (
+                    detect_timestamp_format_cached(line)
+                    if i % 100 == 0
+                    else detect_timestamp_format(line)
+                )
                 ts = None
 
                 # Parse timestamp if found

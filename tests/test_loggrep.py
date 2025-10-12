@@ -81,7 +81,7 @@ def run_loggrep(args, input_data=None, expect_error=False):
         cmd = [sys.executable, str(LOGGREP_PATH)] + args
     else:
         cmd = [str(LOGGREP_PATH)] + args
-        
+
     process = subprocess.run(
         cmd, input=input_data, text=True, capture_output=True, cwd=TEST_DIR, env=env
     )
@@ -315,18 +315,18 @@ class TestTimestampParsing:
     def test_stdin_defaults_to_current_time(self):
         """Test that stdin input with --live flag defaults to current time."""
         from datetime import datetime, timedelta
-        
+
         # Create log data with timestamps - some old, some very recent
         now = datetime.now()
         old_time = now - timedelta(hours=1)
         recent_time = now + timedelta(
             seconds=5
         )  # Several seconds in future to ensure it's processed
-        
+
         log_data = f"""{old_time.strftime('%Y-%m-%d %H:%M:%S')} [INFO] Old message should be filtered
 {recent_time.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Recent message should appear
 """
-        
+
         result = run_loggrep(["ERROR", "--live"], input_data=log_data)
         # Should only find the recent ERROR message, not the old one
         assert "Recent message should appear" in result.stdout
@@ -356,21 +356,21 @@ class TestTimestampParsing:
     def test_live_flag_functionality(self):
         """Test that --live flag works for real-time log streaming simulation."""
         import subprocess
+        import sys
         import threading
         import time
-        import sys
         from datetime import datetime
-        
+
         # Use async bash to simulate live log streaming
         env = os.environ.copy()
         env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
-        
+
         # Build command with Windows compatibility
         if sys.platform == "win32":
             cmd = [sys.executable, str(LOGGREP_PATH), "ERROR", "--live"]
         else:
             cmd = [str(LOGGREP_PATH), "ERROR", "--live"]
-            
+
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -378,30 +378,30 @@ class TestTimestampParsing:
             stderr=subprocess.PIPE,
             text=True,
             env=env,
-            cwd=TEST_DIR
+            cwd=TEST_DIR,
         )
-        
+
         try:
             # Generate log entries in real-time
             now = datetime.now()
-            
+
             # Send an old log entry (should be filtered out)
             old_entry = f"{(now - timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Old error message\n"
-            
+
             # Send a future log entry (should appear - this simulates live streaming)
             future_entry = f"{(now + timedelta(seconds=2)).strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Future error message\n"
-            
+
             # Combine all input
             input_data = old_entry + future_entry
-            
+
             # Send all input and get output
             stdout, stderr = process.communicate(input=input_data, timeout=5)
-            
+
             # Verify that only future entries appear (old ones filtered out)
             # This is the expected behavior for live mode - it filters based on startup time
             assert "Future error message" in stdout
             assert "Old error message" not in stdout
-            
+
         except subprocess.TimeoutExpired:
             process.kill()
             process.communicate()
@@ -414,19 +414,19 @@ class TestTimestampParsing:
     def test_live_streaming_simulation(self):
         """Test live streaming like 'tail -f' or 'adb logcat' scenarios."""
         import subprocess
-        import time
         import sys
+        import time
         from datetime import datetime
-        
+
         env = os.environ.copy()
         env["PYTHONPATH"] = str(TEST_DIR / "src") + ":" + env.get("PYTHONPATH", "")
-        
+
         # Build command with Windows compatibility
         if sys.platform == "win32":
             cmd = [sys.executable, str(LOGGREP_PATH), "ActivityManager", "--live"]
         else:
             cmd = [str(LOGGREP_PATH), "ActivityManager", "--live"]
-            
+
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -434,11 +434,11 @@ class TestTimestampParsing:
             stderr=subprocess.PIPE,
             text=True,
             env=env,
-            cwd=TEST_DIR
+            cwd=TEST_DIR,
         )
-        
+
         output_lines = []
-        
+
         def read_output():
             """Read output from process in separate thread."""
             try:
@@ -449,55 +449,55 @@ class TestTimestampParsing:
                     output_lines.append(line.strip())
             except:
                 pass
-        
+
         output_thread = threading.Thread(target=read_output, daemon=True)
         output_thread.start()
-        
+
         try:
             now = datetime.now()
-            
+
             # Simulate old log entries (should be filtered)
             old_entries = [
                 f"{(now - timedelta(minutes=30)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Old activity start",
                 f"{(now - timedelta(minutes=20)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Old activity pause",
             ]
-            
+
             # Simulate current/recent log entries (should appear)
             future_entries = [
                 f"{(now + timedelta(seconds=1)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Future activity launch",
                 f"{(now + timedelta(seconds=2)).strftime('%m-%d %H:%M:%S.%f')[:-3]}  1234  5678 I ActivityManager: Recent activity resume",
             ]
-            
+
             # Send old entries first
             for entry in old_entries:
                 process.stdin.write(entry + "\n")
                 process.stdin.flush()
                 time.sleep(0.05)  # Small delay to simulate real streaming
-            
+
             # Send current entries
             for entry in future_entries:
                 process.stdin.write(entry + "\n")
                 process.stdin.flush()
                 time.sleep(0.05)
-            
+
             # Give some time for processing
             time.sleep(0.2)
-            
+
             # Close stdin to signal end
             process.stdin.close()
-            
+
             # Wait for process to finish
             process.wait(timeout=3)
-            
+
             # Check results
-            output_text = '\n'.join(output_lines)
-            
+            output_text = "\n".join(output_lines)
+
             # Should show current activities but not old ones
             assert "Future activity launch" in output_text
             assert "Recent activity resume" in output_text
             assert "Old activity start" not in output_text
             assert "Old activity pause" not in output_text
-            
+
         except subprocess.TimeoutExpired:
             process.kill()
             pytest.fail("Live streaming test timed out")
@@ -673,30 +673,34 @@ class TestErrorHandling:
 
     def test_permission_denied_error(self):
         """Test handling of permission denied on file."""
-        import tempfile
         import os
         import stat
         import sys
-        
+        import tempfile
+
         # Skip on Windows as it doesn't have getuid and permission model is different
         if sys.platform == "win32":
             import pytest
+
             pytest.skip("Permission test not applicable on Windows")
-            
+
         # Create a temporary file and make it unreadable
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             f.write("test content\n")
             temp_file = f.name
-        
+
         try:
             # Remove read permissions - use different approach for Docker/root
-            if hasattr(os, 'getuid') and os.getuid() == 0:  # Running as root (common in Docker)
+            if (
+                hasattr(os, "getuid") and os.getuid() == 0
+            ):  # Running as root (common in Docker)
                 # Skip this test when running as root since root can read any file
                 import pytest
+
                 pytest.skip("Permission test not applicable when running as root")
             else:
                 os.chmod(temp_file, 0o200)  # Write only, no read
-                
+
                 result = run_loggrep(["test", "--file", temp_file], expect_error=True)
                 assert result.returncode == 2
                 assert "Permission denied" in result.stderr
@@ -710,9 +714,9 @@ class TestErrorHandling:
 
     def test_directory_error(self):
         """Test handling when file argument is a directory."""
-        import tempfile
         import sys
-        
+        import tempfile
+
         # Use a temporary directory
         with tempfile.TemporaryDirectory() as temp_dir:
             result = run_loggrep(["test", "--file", temp_dir], expect_error=True)
@@ -725,42 +729,49 @@ class TestErrorHandling:
 
     def test_file_not_found_error(self):
         """Test handling of nonexistent file."""
-        result = run_loggrep(["test", "--file", "/nonexistent/path/file.log"], expect_error=True)
+        result = run_loggrep(
+            ["test", "--file", "/nonexistent/path/file.log"], expect_error=True
+        )
         assert result.returncode == 2
-        assert ("No such file or directory" in result.stderr or 
-                "cannot find the file" in result.stderr.lower())
+        assert (
+            "No such file or directory" in result.stderr
+            or "cannot find the file" in result.stderr.lower()
+        )
 
     def test_broken_pipe_handling(self):
         """Test graceful handling of broken pipe."""
-        import subprocess
         import os
+        import subprocess
         import sys
-        
+
         # Create a large file
         temp_file = create_temp_logfile("line with content\n" * 1000)
         try:
             # Build command with Windows compatibility
             if sys.platform == "win32":
-                cmd = [sys.executable, str(LOGGREP_PATH), "content", "--file", temp_file]
+                cmd = [
+                    sys.executable,
+                    str(LOGGREP_PATH),
+                    "content",
+                    "--file",
+                    temp_file,
+                ]
             else:
                 cmd = [str(LOGGREP_PATH), "content", "--file", temp_file]
-                
+
             # Start loggrep process
             process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
-            
+
             # Read just a bit and then close to simulate broken pipe
             if process.stdout:
                 process.stdout.read(100)
                 process.stdout.close()
-            
+
             # Wait for process to complete
             process.wait()
-            
+
             # Should handle broken pipe gracefully (exit code 0)
             # Note: broken pipe might return various exit codes depending on OS
             assert process.returncode in [0, 1, 120]  # Allow for different OS behaviors
@@ -774,7 +785,7 @@ class TestErrorHandling:
         """Test handling of invalid regex patterns."""
         # Test with an invalid regex that will cause an error
         log_data = "2023-10-04 12:00:00 Test message\n"
-        
+
         # Invalid regex with unmatched bracket
         result = run_loggrep(["[invalid"], input_data=log_data, expect_error=True)
         assert result.returncode == 1
@@ -786,11 +797,12 @@ class TestErrorHandling:
         result = run_loggrep(["--help"])
         assert result.returncode == 0
         assert "color" in result.stdout.lower()
-        
+
         # Test that auto color detection doesn't crash even if colorama fails
         # This exercises the ImportError handling in _supports_color()
-        result = run_loggrep(["INFO", "--color", "auto"], 
-                           input_data="2023-10-04 12:00:00 [INFO] Test\n")
+        result = run_loggrep(
+            ["INFO", "--color", "auto"], input_data="2023-10-04 12:00:00 [INFO] Test\n"
+        )
         assert result.returncode == 0
 
 
@@ -800,16 +812,20 @@ class TestColorHandling:
     def test_color_auto_without_tty(self):
         """Test color=auto behavior when not in TTY."""
         # When running in subprocess (not TTY), should not use colors
-        result = run_loggrep(["INFO", "--color", "auto"], 
-                           input_data="2023-10-04 12:00:00 [INFO] Test message\n")
+        result = run_loggrep(
+            ["INFO", "--color", "auto"],
+            input_data="2023-10-04 12:00:00 [INFO] Test message\n",
+        )
         assert result.returncode == 0
         # Output should not contain ANSI color codes when not in TTY
         assert "\033[" not in result.stdout
 
     def test_color_never(self):
         """Test that --color never disables colors."""
-        result = run_loggrep(["INFO", "--color", "never"], 
-                           input_data="2023-10-04 12:00:00 [INFO] Test message\n")
+        result = run_loggrep(
+            ["INFO", "--color", "never"],
+            input_data="2023-10-04 12:00:00 [INFO] Test message\n",
+        )
         assert result.returncode == 0
         assert "\033[" not in result.stdout
 
@@ -821,7 +837,7 @@ class TestMemoryAndPerformance:
         """Test handling of large input data."""
         # Create a moderately large input to test memory handling
         large_log = "2023-10-04 12:00:00 Test line\n" * 10000
-        
+
         result = run_loggrep(["Test"], input_data=large_log)
         assert result.returncode == 0
         # Should find all matching lines
@@ -830,7 +846,7 @@ class TestMemoryAndPerformance:
     def test_no_matches_large_file(self):
         """Test behavior with large file that has no matches."""
         large_log = "2023-10-04 12:00:00 Other content\n" * 5000
-        
+
         result = run_loggrep(["NonExistent"], input_data=large_log)
         # When no matches are found, loggrep returns 0 (success) but empty output
         assert result.returncode == 0  # Process completed successfully
@@ -847,11 +863,11 @@ class TestRegexEdgeCases:
 2023-10-04 12:00:02 Path: /var/log/app.log
 2023-10-04 12:00:03 Query: SELECT * FROM users
 """
-        
+
         # Test escaping special regex characters
         result = run_loggrep([r"\$\d+\.\d+"], input_data=log_data)
         assert "Price: $100.50" in result.stdout
-        
+
         # Test email pattern
         result = run_loggrep([r"\w+@\w+\.\w+"], input_data=log_data)
         assert "user@domain.com" in result.stdout
@@ -863,10 +879,10 @@ class TestRegexEdgeCases:
 2023-10-04 12:00:02 [INFO] User login: john.doe
 2023-10-04 12:00:03 [ERROR] API error: 404 Not Found
 """
-        
+
         # Test lookahead/lookbehind if supported
         result = run_loggrep([r"ERROR.*\d+"], input_data=log_data)
-        lines = result.stdout.strip().split('\n')
+        lines = result.stdout.strip().split("\n")
         assert len(lines) == 2  # Two ERROR lines with numbers
 
 

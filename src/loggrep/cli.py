@@ -8,8 +8,7 @@ regex support, invert match, context lines, and color output.
 
 import argparse
 import sys
-from typing import Optional, List
-
+from typing import List, Optional
 
 from . import __version__
 from .core import LogSearcher
@@ -181,33 +180,55 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print(line, end="")
 
         except FileNotFoundError:
-            print(f"🚫 loggrep: '{args.file}': No such file or directory", file=sys.stderr)
-            print("💡 Tip: Check the file path and ensure the file exists", file=sys.stderr)
+            print(
+                f"🚫 loggrep: '{args.file}': No such file or directory", file=sys.stderr
+            )
+            print(
+                "💡 Tip: Check the file path and ensure the file exists",
+                file=sys.stderr,
+            )
             return 2
         except PermissionError:
             print(f"🔒 loggrep: '{args.file}': Permission denied", file=sys.stderr)
-            print("💡 Tip: Try running with sudo or check file permissions", file=sys.stderr)
+            print(
+                "💡 Tip: Try running with sudo or check file permissions",
+                file=sys.stderr,
+            )
             return 2
         except IsADirectoryError:
             print(f"📁 loggrep: '{args.file}': Is a directory", file=sys.stderr)
-            print("💡 Tip: Specify a file, not a directory. Use 'find' to search directories", file=sys.stderr)
+            print(
+                "💡 Tip: Specify a file, not a directory. Use 'find' to search directories",
+                file=sys.stderr,
+            )
             return 2
         except BrokenPipeError:
             # Handle broken pipe gracefully (e.g., when piping to head)
             return 0
         except UnicodeDecodeError as e:
-            print(f"🔤 loggrep: Unable to decode file '{args.file}': {e}", file=sys.stderr)
-            print("💡 Tip: File may be binary or use an unsupported encoding", file=sys.stderr)
+            print(
+                f"🔤 loggrep: Unable to decode file '{args.file}': {e}", file=sys.stderr
+            )
+            print(
+                "💡 Tip: File may be binary or use an unsupported encoding",
+                file=sys.stderr,
+            )
             return 2
 
     except ValueError as e:
         error_msg = str(e)
         if "startup-time" in error_msg.lower():
             print(f"⏰ loggrep: Invalid timestamp format: {e}", file=sys.stderr)
-            print("💡 Tip: Try formats like '2025-10-05 14:30:00' or 'Oct 5 14:30:00'", file=sys.stderr)
+            print(
+                "💡 Tip: Try formats like '2025-10-05 14:30:00' or 'Oct 5 14:30:00'",
+                file=sys.stderr,
+            )
         elif "pattern" in error_msg.lower() or "regex" in error_msg.lower():
             print(f"🔍 loggrep: Invalid regex pattern: {e}", file=sys.stderr)
-            print("💡 Tip: Check your regex syntax or use simple text patterns", file=sys.stderr)
+            print(
+                "💡 Tip: Check your regex syntax or use simple text patterns",
+                file=sys.stderr,
+            )
         else:
             print(f"❌ loggrep: {e}", file=sys.stderr)
         return 1
@@ -216,7 +237,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 130
     except Exception as e:
         print(f"💥 loggrep: Unexpected error: {e}", file=sys.stderr)
-        print("🐛 Please report this issue at: https://github.com/seanpor/Loggrep/issues", file=sys.stderr)
+        print(
+            "🐛 Please report this issue at: https://github.com/seanpor/Loggrep/issues",
+            file=sys.stderr,
+        )
         return 1
 
     return 0
