@@ -61,14 +61,10 @@ jobs:
         
     - name: Test with pytest
       run: |
-        # First run tests and collect coverage data
-        python3 -m pytest tests/ --cov=loggrep --cov-report=xml --cov-report=html --cov-report=term
-        # Then combine any parallel coverage data
-        python3 -m coverage combine || true
-        # Generate final XML report
-        python3 -m coverage xml -o coverage.xml || true
-        # Verify the coverage file was created
-        ls -la coverage.xml || echo "Coverage XML not found"
+        # Run tests with pytest-cov (this works for subprocess calls)
+        python3 -m pytest tests/ --cov=loggrep --cov-report=xml:coverage.xml --cov-report=term
+        # Verify the coverage file was created (cross-platform)
+        python3 -c "import os; print('Coverage file exists:', os.path.exists('coverage.xml')); print('Size:', os.path.getsize('coverage.xml') if os.path.exists('coverage.xml') else 'N/A')"
       env:
         PYTHONPATH: ${{ github.workspace }}/src
         COVERAGE_PROCESS_START: ${{ github.workspace }}/.coveragerc
@@ -83,6 +79,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
         verbose: true
+      continue-on-error: true  # Don't fail CI if coverage upload fails
 
   performance:
     runs-on: ubuntu-latest
