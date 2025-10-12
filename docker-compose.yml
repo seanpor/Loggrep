@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: py314
-    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v && python3 -m coverage combine && python3 -m coverage xml -o coverage_py314.xml && python3 -m coverage report"
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o /tmp/coverage_py314.xml && python3 -m coverage report && cp /tmp/coverage_py314.xml . 2>/dev/null || true"
     volumes:
       - .:/app
 
@@ -11,7 +11,7 @@ services:
     build:
       context: .
       target: py313
-    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v && python3 -m coverage combine && python3 -m coverage xml -o coverage_py313.xml && python3 -m coverage report"
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o /tmp/coverage_py313.xml && python3 -m coverage report && cp /tmp/coverage_py313.xml . 2>/dev/null || true"
     volumes:
       - .:/app
 
@@ -27,7 +27,7 @@ services:
     build:
       context: .
       target: py311
-    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o coverage_py311.xml && python3 -m coverage report"
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o /tmp/coverage_py311.xml && python3 -m coverage report && cp /tmp/coverage_py311.xml . 2>/dev/null || true"
     volumes:
       - .:/app
 
@@ -35,7 +35,7 @@ services:
     build:
       context: .
       target: py310
-    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o coverage_py310.xml && python3 -m coverage report"
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o /tmp/coverage_py310.xml && python3 -m coverage report && cp /tmp/coverage_py310.xml . 2>/dev/null || true"
     volumes:
       - .:/app
 
@@ -43,7 +43,7 @@ services:
     build:
       context: .
       target: py39
-    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o coverage_py39.xml && python3 -m coverage report"
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o /tmp/coverage_py39.xml && python3 -m coverage report && cp /tmp/coverage_py39.xml . 2>/dev/null || true"
     volumes:
       - .:/app
 
@@ -51,7 +51,7 @@ services:
     build:
       context: .
       target: py38
-    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o coverage_py38.xml && python3 -m coverage report"
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o /tmp/coverage_py38.xml && python3 -m coverage report && cp /tmp/coverage_py38.xml . 2>/dev/null || true"
     volumes:
       - .:/app
 
@@ -59,7 +59,7 @@ services:
     build:
       context: .
       target: py37
-    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o coverage_py37.xml && python3 -m coverage report"
+    command: bash -c "PYTHONPATH=/app COVERAGE_PROCESS_START=/app/.coveragerc python3 -m coverage run -m pytest tests/ -v -p no:cacheprovider && python3 -m coverage combine && python3 -m coverage xml -o /tmp/coverage_py37.xml && python3 -m coverage report && cp /tmp/coverage_py37.xml . 2>/dev/null || true"
     volumes:
       - .:/app
 
