@@ -64,14 +64,14 @@ For more information, visit: https://github.com/seanpor/Loggrep
     )
     parser.add_argument(
         "--startup-time",
-        help="Only show matches after this time (e.g., '2025-10-04 12:00:00'). For stdin, you can use --live to default to current time.",
+        help="Only show matches after this time. Supports various formats: '2025-10-04 12:00:00', 'Oct 4 12:00:00', '10 minutes ago'. For stdin, consider using --live for real-time filtering.",
         default=None,
     )
 
     parser.add_argument(
         "--live",
         action="store_true",
-        help="For stdin input, use current time as default startup time (useful for live log streaming like 'adb logcat')",
+        help="For stdin input, use current time as startup time. Perfect for live log streaming (e.g., 'adb logcat | loggrep pattern --live').",
     )
 
     # Search options
@@ -79,13 +79,13 @@ For more information, visit: https://github.com/seanpor/Loggrep
         "-i",
         "--ignore-case",
         action="store_true",
-        help="Ignore case in pattern matching",
+        help="Ignore case distinctions in both patterns and input text (like grep -i).",
     )
     parser.add_argument(
         "-v",
         "--invert-match",
         action="store_true",
-        help="Show lines that do NOT match the pattern",
+        help="Show lines that do NOT match any of the patterns (like grep -v). Useful for filtering out noise.",
     )
 
     # Context options
@@ -95,7 +95,7 @@ For more information, visit: https://github.com/seanpor/Loggrep
         type=int,
         default=0,
         metavar="NUM",
-        help="Show NUM lines after each match",
+        help="Show NUM lines after each match (like grep -A). Useful for seeing consequences of errors.",
     )
     parser.add_argument(
         "-B",
@@ -103,7 +103,7 @@ For more information, visit: https://github.com/seanpor/Loggrep
         type=int,
         default=0,
         metavar="NUM",
-        help="Show NUM lines before each match",
+        help="Show NUM lines before each match (like grep -B). Useful for seeing what led to errors.",
     )
     parser.add_argument(
         "-C",
@@ -111,7 +111,7 @@ For more information, visit: https://github.com/seanpor/Loggrep
         type=int,
         default=0,
         metavar="NUM",
-        help="Show NUM lines before and after each match",
+        help="Show NUM lines before and after each match (like grep -C). Equivalent to -A NUM -B NUM.",
     )
 
     # Output options
@@ -181,24 +181,43 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print(line, end="")
 
         except FileNotFoundError:
-            print(f"loggrep: {args.file}: No such file or directory", file=sys.stderr)
+            print(f"🚫 loggrep: '{args.file}': No such file or directory", file=sys.stderr)
+            print("💡 Tip: Check the file path and ensure the file exists", file=sys.stderr)
             return 2
         except PermissionError:
-            print(f"loggrep: {args.file}: Permission denied", file=sys.stderr)
+            print(f"🔒 loggrep: '{args.file}': Permission denied", file=sys.stderr)
+            print("💡 Tip: Try running with sudo or check file permissions", file=sys.stderr)
             return 2
         except IsADirectoryError:
-            print(f"loggrep: {args.file}: Is a directory", file=sys.stderr)
+            print(f"📁 loggrep: '{args.file}': Is a directory", file=sys.stderr)
+            print("💡 Tip: Specify a file, not a directory. Use 'find' to search directories", file=sys.stderr)
             return 2
         except BrokenPipeError:
             # Handle broken pipe gracefully (e.g., when piping to head)
             return 0
+        except UnicodeDecodeError as e:
+            print(f"🔤 loggrep: Unable to decode file '{args.file}': {e}", file=sys.stderr)
+            print("💡 Tip: File may be binary or use an unsupported encoding", file=sys.stderr)
+            return 2
 
     except ValueError as e:
-        print(f"loggrep: {e}", file=sys.stderr)
+        error_msg = str(e)
+        if "startup-time" in error_msg.lower():
+            print(f"⏰ loggrep: Invalid timestamp format: {e}", file=sys.stderr)
+            print("💡 Tip: Try formats like '2025-10-05 14:30:00' or 'Oct 5 14:30:00'", file=sys.stderr)
+        elif "pattern" in error_msg.lower() or "regex" in error_msg.lower():
+            print(f"🔍 loggrep: Invalid regex pattern: {e}", file=sys.stderr)
+            print("💡 Tip: Check your regex syntax or use simple text patterns", file=sys.stderr)
+        else:
+            print(f"❌ loggrep: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
-        print("\nInterrupted", file=sys.stderr)
+        print("\n⏹️  Interrupted by user", file=sys.stderr)
         return 130
+    except Exception as e:
+        print(f"💥 loggrep: Unexpected error: {e}", file=sys.stderr)
+        print("🐛 Please report this issue at: https://github.com/seanpor/Loggrep/issues", file=sys.stderr)
+        return 1
 
     return 0
 
