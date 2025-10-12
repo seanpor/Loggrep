@@ -1,5 +1,5 @@
 [run]
-source = src
+source = src/loggrep
 parallel = true
 concurrency = multiprocessing
 data_file = .coverage
@@ -16,3 +16,9 @@ exclude_lines =
     if __name__ == .__main__.:
     class .*\bProtocol\):
     @(abc\.)?abstractmethod
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
