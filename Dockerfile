@@ -6,8 +6,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
 # Python 3.13
 FROM python:3.13-slim as py313
@@ -17,8 +21,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
 # Python 3.12
 FROM python:3.12-slim as py312
@@ -28,8 +36,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
 # Python 3.11
 FROM python:3.11-slim as py311
@@ -39,8 +51,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
 # Python 3.10
 FROM python:3.10-slim as py310
@@ -50,8 +66,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
 # Python 3.9
 FROM python:3.9-slim as py39
@@ -61,8 +81,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
 # Python 3.8
 FROM python:3.8-slim as py38
@@ -72,8 +96,12 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
 # Python 3.7 (minimal support)
 FROM python:3.7-slim as py37
@@ -83,6 +111,10 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY . .
 RUN pip install --upgrade pip && \
     pip install -e ".[dev]" && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    mkdir -p /tmp/pytest_cache /tmp/coverage_data && \
+    chown -R appuser:appuser /tmp/pytest_cache /tmp/coverage_data
 USER appuser
+ENV PYTEST_CACHE_DIR=/tmp/pytest_cache
+ENV COVERAGE_FILE=/tmp/coverage_data/.coverage
 
