@@ -160,8 +160,11 @@ setup_dev_old.py
 *.out
 *.pid
 
-# Coverage reports (keep main coverage.xml, ignore versioned ones)
-coverage_py*.xml
+# Coverage reports
+reports/coverage/
+htmlcov/
+.coverage
+coverage.xml
 
 # Build artifacts from different environments
 build-*/

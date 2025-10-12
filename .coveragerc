@@ -18,7 +18,7 @@ exclude_lines =
     @(abc\.)?abstractmethod
 
 [html]
-directory = htmlcov
+directory = reports/coverage/htmlcov
 
 [xml]
-output = coverage.xml
+output = reports/coverage/coverage.xml
