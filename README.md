@@ -1,5 +1,7 @@
 # 🔍 Loggrep
 
+** NOT WORKING** :-(
+
 **A powerful command-line tool for timestamp-aware log searching**
 
 [![PyPI version](https://badge.fury.io/py/loggrep.svg)](https://badge.fury.io/py/loggrep)
