@@ -1,6 +1,7 @@
 # 🔍 Loggrep
 
 ** NOT WORKING** :-(
+** This is an AI generated repo.  I had it working well for a while... then it broke itself when adding extra testing... **
 
 **A powerful command-line tool for timestamp-aware log searching**
 
