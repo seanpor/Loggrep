@@ -169,3 +169,4 @@ coverage.xml
 # Build artifacts from different environments
 build-*/
 dist-*/
+.aider*

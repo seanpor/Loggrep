@@ -71,22 +71,20 @@ services:
       - .:/workspace
     working_dir: /workspace
     command: sh -c "
-      echo '=== Testing Python 3.7 ===' &&
-      docker-compose run --rm test_py37 &&
       echo '=== Testing Python 3.8 ===' &&
-      docker-compose run --rm test_py38 &&
+      docker compose run --rm test_py38 &&
       echo '=== Testing Python 3.9 ===' &&
-      docker-compose run --rm test_py39 &&
+      docker compose run --rm test_py39 &&
       echo '=== Testing Python 3.10 ===' &&
-      docker-compose run --rm test_py310 &&
+      docker compose run --rm test_py310 &&
       echo '=== Testing Python 3.11 ===' &&
-      docker-compose run --rm test_py311 &&
+      docker compose run --rm test_py311 &&
       echo '=== Testing Python 3.12 ===' &&
-      docker-compose run --rm test_py312 &&
+      docker compose run --rm test_py312 &&
       echo '=== Testing Python 3.13 ===' &&
-      docker-compose run --rm test_py313 &&
+      docker compose run --rm test_py313 &&
       echo '=== Testing Python 3.14 ===' &&
-      docker-compose run --rm test_py314 &&
+      docker compose run --rm test_py314 &&
       echo '=== All tests completed ==='
       "
 

@@ -55,9 +55,6 @@ test:
 test-docker:
 	./scripts/test_docker.sh all
 
-test-docker-py37:
-	./scripts/test_docker.sh 3.7
-
 test-docker-py38:
 	./scripts/test_docker.sh 3.8
 
@@ -124,10 +121,10 @@ clean:
 
 # Docker operations
 docker-build:
-	docker-compose build
+	docker compose build
 
 docker-dev:
-	docker-compose run --rm dev
+	docker compose run --rm dev
 
 # CI/CD helper targets
 ci-test: test-docker

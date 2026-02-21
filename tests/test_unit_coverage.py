@@ -1,178 +1,468 @@
 #!/usr/bin/env python3
 """
-Unit tests for coverage - imports modules directly for coverage tracking.
+Unit tests with direct imports for coverage tracking.
 
-These complement the integration tests in test_loggrep.py which test via subprocess.
+These complement the integration tests in test_loggrep.py which run via subprocess
+and therefore don't contribute to pytest-cov coverage.
 """
 
 import io
+import os
 import sys
-from datetime import datetime
-from unittest.mock import mock_open, patch
+import tempfile
+from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
-# Add src to path for direct imports
 sys.path.insert(0, "src")
 
-from loggrep.cli import create_parser, main
+from loggrep.cli import _file_error, create_parser, determine_color_usage, main
 from loggrep.core import LogSearcher
 from loggrep.timestamps import detect_timestamp_format, parse_timestamp
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-class TestLogSearcherCore:
-    """Unit tests for LogSearcher core functionality with direct imports."""
 
-    def test_init_basic(self):
-        """Test LogSearcher initialization."""
-        ls = LogSearcher(patterns=["test"])
-        # Test that it can be instantiated - actual attributes may vary
-        assert ls is not None
+def _make_stream(lines):
+    """Create a StringIO stream from a list of strings."""
+    return io.StringIO("".join(lines))
 
-    def test_init_with_options(self):
-        """Test LogSearcher initialization with various parameters."""
-        # Test basic instantiation works
+
+def _future_iso(seconds=60):
+    """Return an ISO-8601 timestamp string N seconds in the future."""
+    dt = datetime.now() + timedelta(seconds=seconds)
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _past_iso(seconds=600):
+    """Return an ISO-8601 timestamp string N seconds in the past."""
+    dt = datetime.now() - timedelta(seconds=seconds)
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+# ===================================================================
+# LogSearcher — __init__
+# ===================================================================
+
+
+class TestLogSearcherInit:
+    def test_single_pattern(self):
+        ls = LogSearcher(patterns=["hello"])
+        assert ls.pattern.pattern == "hello"
+
+    def test_multiple_patterns(self):
+        ls = LogSearcher(patterns=["a", "b"])
+        assert "(a)" in ls.pattern.pattern
+        assert "(b)" in ls.pattern.pattern
+
+    def test_ignore_case(self):
+        ls = LogSearcher(patterns=["hello"], ignore_case=True)
+        assert ls.pattern.search("HELLO")
+
+    def test_context_override(self):
+        ls = LogSearcher(patterns=["x"], before_context=1, after_context=1, context=5)
+        assert ls.before_context == 5
+        assert ls.after_context == 5
+
+    def test_invalid_regex(self):
+        with pytest.raises(ValueError, match="Invalid regex"):
+            LogSearcher(patterns=["[invalid"])
+
+    def test_startup_time_parsing(self):
+        ls = LogSearcher(patterns=["x"], startup_time="2025-06-15 12:00:00")
+        assert ls.startup_time == datetime(2025, 6, 15, 12, 0, 0)
+
+    def test_no_startup_time(self):
+        ls = LogSearcher(patterns=["x"])
+        assert ls.startup_time is None
+
+
+# ===================================================================
+# LogSearcher — search_stream
+# ===================================================================
+
+
+class TestSearchStream:
+    def test_basic_match(self):
+        stream = _make_stream(["hello world\n", "goodbye\n"])
+        ls = LogSearcher(patterns=["hello"])
+        assert list(ls.search_stream(stream)) == ["hello world\n"]
+
+    def test_no_match(self):
+        stream = _make_stream(["foo\n", "bar\n"])
+        ls = LogSearcher(patterns=["baz"])
+        assert list(ls.search_stream(stream)) == []
+
+    def test_invert_match(self):
+        stream = _make_stream(["ERROR line\n", "INFO line\n", "DEBUG line\n"])
+        ls = LogSearcher(patterns=["ERROR"], invert_match=True)
+        result = list(ls.search_stream(stream))
+        assert "INFO line\n" in result
+        assert "DEBUG line\n" in result
+        assert "ERROR line\n" not in result
+
+    def test_after_context(self):
+        lines = ["line1\n", "MATCH\n", "line3\n", "line4\n"]
+        ls = LogSearcher(patterns=["MATCH"], after_context=1)
+        result = list(ls.search_stream(_make_stream(lines)))
+        assert "MATCH\n" in result
+        assert "line3\n" in result
+
+    def test_before_context(self):
+        lines = ["line1\n", "line2\n", "MATCH\n", "line4\n"]
+        ls = LogSearcher(patterns=["MATCH"], before_context=1)
+        result = list(ls.search_stream(_make_stream(lines)))
+        assert "line2\n" in result
+        assert "MATCH\n" in result
+
+    def test_context_both(self):
+        lines = ["a\n", "b\n", "MATCH\n", "d\n", "e\n"]
+        ls = LogSearcher(patterns=["MATCH"], context=1)
+        result = list(ls.search_stream(_make_stream(lines)))
+        assert "b\n" in result
+        assert "MATCH\n" in result
+        assert "d\n" in result
+
+    def test_timestamp_filtering_skips_old(self):
+        now = datetime.now()
+        past = (now - timedelta(seconds=600)).strftime("%Y-%m-%d %H:%M:%S")
+        future = (now + timedelta(seconds=600)).strftime("%Y-%m-%d %H:%M:%S")
+        lines = [
+            f"{past} old error\n",
+            f"{future} new error\n",
+        ]
         ls = LogSearcher(patterns=["error"])
-        assert ls is not None
+        ls.startup_time = now
+        result = list(ls.search_stream(_make_stream(lines)))
+        assert len(result) == 1
+        assert "new error" in result[0]
 
+    def test_no_timestamp_fallback(self):
+        """After NO_TIMESTAMP_THRESHOLD lines with no timestamps, filtering disables."""
+        lines = ["line1\n", "line2\n", "line3\n", "target line\n"]
+        ls = LogSearcher(patterns=["target"])
+        ls.startup_time = datetime.now()
+        result = list(ls.search_stream(_make_stream(lines)))
+        assert len(result) == 1
+        assert "target" in result[0]
+
+    def test_no_filtering_without_startup_time(self):
+        lines = ["a\n", "b\n", "c\n"]
+        ls = LogSearcher(patterns=["b"])
+        result = list(ls.search_stream(_make_stream(lines)))
+        assert result == ["b\n"]
+
+
+# ===================================================================
+# LogSearcher — highlight_match
+# ===================================================================
+
+
+class TestHighlightMatch:
+    def test_no_color(self):
+        ls = LogSearcher(patterns=["test"], use_color=False)
+        m = ls.pattern.search("test line")
+        assert ls.highlight_match("test line", m) == "test line"
+
+    def test_with_color(self):
+        ls = LogSearcher(patterns=["test"], use_color=True)
+        if ls.use_color:  # Only runs if colorama is installed
+            m = ls.pattern.search("test line")
+            result = ls.highlight_match("test line", m)
+            assert "test" in result
+            assert result != "test line"  # Should be different due to color codes
+
+
+# ===================================================================
+# LogSearcher — search_file
+# ===================================================================
+
+
+class TestSearchFile:
     def test_search_file_basic(self):
-        """Test basic file searching."""
-        ls = LogSearcher(patterns=["test"])
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            f.write("ERROR something\nINFO ok\nERROR again\n")
+            f.flush()
+            try:
+                ls = LogSearcher(patterns=["ERROR"])
+                ls.startup_time = None  # Disable time filtering
+                result = list(ls.search_file(f.name))
+                assert len(result) == 2
+                assert all("ERROR" in r for r in result)
+            finally:
+                os.unlink(f.name)
 
-        # Test file searching (will test the method exists and is callable)
-        assert hasattr(ls, "search_file")
-        assert callable(getattr(ls, "search_file"))
-
-    def test_search_stdin_basic(self):
-        """Test basic stdin searching."""
-        ls = LogSearcher(patterns=["test"])
-
-        # Test stdin searching (will test the method exists and is callable)
-        assert hasattr(ls, "search_stdin")
-        assert callable(getattr(ls, "search_stdin"))
-
-
-class TestTimestampParsing:
-    """Unit tests for timestamp parsing functionality."""
-
-    def test_parse_unix_syslog_timestamp(self):
-        """Test parsing Unix syslog timestamps."""
-        log_line = "Oct 12 14:30:45 hostname service: message"
-        timestamp = parse_timestamp(log_line)
-        # Note: timestamp parsing may return None - that's ok for this coverage test
-        assert parse_timestamp is not None  # Just test function exists
-
-    def test_parse_iso8601_timestamp(self):
-        """Test parsing ISO8601 timestamps."""
-        log_line = "2023-10-12T14:30:45.123Z service: message"
-        timestamp = parse_timestamp(log_line)
-        # Note: timestamp parsing may return None - that's ok for this coverage test
-        assert parse_timestamp is not None  # Just test function exists
-
-    def test_parse_android_logcat_timestamp(self):
-        """Test parsing Android logcat timestamps."""
-        log_line = "10-12 14:30:45.123  1234  5678 I Tag: message"
-        timestamp = parse_timestamp(log_line)
-        # Note: timestamp parsing may return None - that's ok for this coverage test
-        assert parse_timestamp is not None  # Just test function exists
-
-    def test_parse_no_timestamp(self):
-        """Test handling lines without timestamps."""
-        log_line = "This line has no timestamp"
-        timestamp = parse_timestamp(log_line)
-        assert timestamp is None
-
-    def test_timestamp_functions_available(self):
-        """Test that timestamp functions are accessible."""
-        assert parse_timestamp is not None
-        assert detect_timestamp_format is not None
-
-        # Test that functions are callable
-        assert callable(parse_timestamp)
-        assert callable(detect_timestamp_format)
+    def test_search_file_with_encoding_errors(self):
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".log", delete=False) as f:
+            f.write(b"good line\n\xc0\xc1 bad bytes\nanother good\n")
+            f.flush()
+            try:
+                ls = LogSearcher(patterns=["good"])
+                ls.startup_time = None
+                result = list(ls.search_file(f.name))
+                assert len(result) == 2
+            finally:
+                os.unlink(f.name)
 
 
-class TestCLIFunctions:
-    """Unit tests for CLI functions with direct calls."""
+# ===================================================================
+# CLI — determine_color_usage
+# ===================================================================
 
-    def test_create_parser(self):
-        """Test parser creation."""
-        parser = create_parser()
-        assert parser is not None
-        assert hasattr(parser, "parse_args")
 
-    def test_parser_help(self):
-        """Test parser help functionality."""
-        parser = create_parser()
-        with pytest.raises(SystemExit):
-            parser.parse_args(["--help"])
+class TestDetermineColorUsage:
+    def test_always(self):
+        assert determine_color_usage("always") is True
 
-    def test_parser_version(self):
-        """Test parser version functionality."""
-        parser = create_parser()
-        with pytest.raises(SystemExit):
-            parser.parse_args(["--version"])
+    def test_never(self):
+        assert determine_color_usage("never") is False
 
-    def test_parser_basic_pattern(self):
-        """Test parser with basic pattern."""
+    def test_auto_non_tty(self):
+        with patch("sys.stdout") as mock_stdout:
+            mock_stdout.isatty.return_value = False
+            assert determine_color_usage("auto") is False
+
+
+# ===================================================================
+# CLI — _file_error
+# ===================================================================
+
+
+class TestFileError:
+    def test_returns_2(self, capsys):
+        result = _file_error("🚫", "/tmp/x", "Not found", "Check path")
+        assert result == 2
+        captured = capsys.readouterr()
+        assert "/tmp/x" in captured.err
+        assert "Not found" in captured.err
+        assert "Check path" in captured.err
+
+
+# ===================================================================
+# CLI — main() startup time priority
+# ===================================================================
+
+
+class TestMainStartupTime:
+    def test_no_live_disables_filtering(self):
+        """--no-live sets startup_time to None."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            past = _past_iso(3600)
+            f.write(f"{past} ERROR old line\n")
+            f.flush()
+            try:
+                result = main(["ERROR", "--file", f.name, "--no-live"])
+                assert result == 0
+            finally:
+                os.unlink(f.name)
+
+    def test_startup_time_override(self):
+        """startup_time_override is used when no --startup-time is given."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            future = _future_iso(600)
+            f.write(f"{future} ERROR future line\n")
+            f.flush()
+            try:
+                override = datetime.now() - timedelta(seconds=10)
+                result = main(
+                    ["ERROR", "--file", f.name],
+                    startup_time_override=override,
+                )
+                assert result == 0
+            finally:
+                os.unlink(f.name)
+
+    def test_explicit_startup_time_takes_priority(self):
+        """--startup-time overrides everything else."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            f.write("2025-06-15 12:00:00 ERROR test\n")
+            f.flush()
+            try:
+                result = main(
+                    [
+                        "ERROR",
+                        "--file",
+                        f.name,
+                        "--startup-time",
+                        "2025-06-15 11:00:00",
+                    ]
+                )
+                assert result == 0
+            finally:
+                os.unlink(f.name)
+
+    def test_default_uses_now(self, capsys):
+        """Without --no-live or override, default is datetime.now()."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            past = _past_iso(3600)
+            f.write(f"{past} ERROR should be hidden\n")
+            f.flush()
+            try:
+                result = main(["ERROR", "--file", f.name])
+                assert result == 0
+                captured = capsys.readouterr()
+                assert "should be hidden" not in captured.out
+            finally:
+                os.unlink(f.name)
+
+
+# ===================================================================
+# CLI — main() error handling
+# ===================================================================
+
+
+class TestMainErrors:
+    def test_file_not_found(self, capsys):
+        result = main(["x", "--file", "/tmp/nonexistent_loggrep_test.log"])
+        assert result == 2
+        assert "No such file" in capsys.readouterr().err
+
+    def test_directory_error(self, capsys):
+        result = main(["x", "--file", "/tmp"])
+        assert result == 2
+        assert "Is a directory" in capsys.readouterr().err
+
+    def test_invalid_regex(self, capsys):
+        result = main(["[invalid", "--no-live"])
+        assert result == 1
+        assert "regex" in capsys.readouterr().err.lower()
+
+    def test_permission_denied(self, capsys):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
+            f.write("test\n")
+            f.flush()
+            os.chmod(f.name, 0o000)
+            try:
+                result = main(["test", "--file", f.name])
+                assert result == 2
+                assert "Permission denied" in capsys.readouterr().err
+            finally:
+                os.chmod(f.name, 0o644)
+                os.unlink(f.name)
+
+
+# ===================================================================
+# Timestamps — detect_timestamp_format
+# ===================================================================
+
+
+class TestDetectTimestampFormat:
+    def test_iso8601(self):
+        assert detect_timestamp_format("2025-06-15 12:00:00 msg") is not None
+
+    def test_syslog(self):
+        assert detect_timestamp_format("Oct  5 14:30:02 host msg") is not None
+
+    def test_logcat(self):
+        assert detect_timestamp_format("10-05 14:30:02.123 msg") is not None
+
+    def test_iso8601_extended(self):
+        assert detect_timestamp_format("2025-06-15T12:00:00Z msg") is not None
+
+    def test_no_timestamp(self):
+        assert detect_timestamp_format("plain text no time here") is None
+
+    def test_nginx(self):
+        assert detect_timestamp_format("2025/06/15 12:00:00 msg") is not None
+
+    def test_apache(self):
+        assert detect_timestamp_format("15/Jun/2025:12:00:00 msg") is not None
+
+    def test_eu_date(self):
+        assert detect_timestamp_format("15.06.2025 12:00:00 msg") is not None
+
+
+# ===================================================================
+# Timestamps — parse_timestamp
+# ===================================================================
+
+
+class TestParseTimestamp:
+    def test_iso8601(self):
+        result = parse_timestamp("2025-06-15 12:00:00")
+        assert result == datetime(2025, 6, 15, 12, 0, 0)
+
+    def test_syslog(self):
+        result = parse_timestamp("Oct 12 14:30:45")
+        assert result is not None
+        assert result.month == 10
+        assert result.day == 12
+
+    def test_logcat(self):
+        result = parse_timestamp("10-12 14:30:45.123")
+        assert result is not None
+        assert result.month == 10
+
+    def test_empty_string(self):
+        assert parse_timestamp("") is None
+
+    def test_whitespace_only(self):
+        assert parse_timestamp("   ") is None
+
+    def test_nonsense(self):
+        assert parse_timestamp("not a timestamp at all") is None
+
+    def test_iso8601_with_t(self):
+        result = parse_timestamp("2025-06-15T12:00:00")
+        assert result == datetime(2025, 6, 15, 12, 0, 0)
+
+    def test_timezone_stripped(self):
+        result = parse_timestamp("2025-06-15T12:00:00+05:00")
+        assert result is not None
+        assert result.tzinfo is None  # Should be naive
+
+
+# ===================================================================
+# CLI — create_parser
+# ===================================================================
+
+
+class TestCreateParser:
+    def test_basic(self):
         parser = create_parser()
         args = parser.parse_args(["test_pattern"])
         assert args.patterns == ["test_pattern"]
 
-    def test_parser_multiple_patterns(self):
-        """Test parser with multiple patterns."""
+    def test_all_options(self):
         parser = create_parser()
-        args = parser.parse_args(["pattern1", "pattern2"])
-        assert args.patterns == ["pattern1", "pattern2"]
-
-    def test_parser_case_insensitive(self):
-        """Test parser case insensitive option."""
-        parser = create_parser()
-        args = parser.parse_args(["-i", "test"])
-        # Just test that parsing works - specific attribute names may vary
-        assert args is not None
-
-    def test_parser_invert_match(self):
-        """Test parser invert match option."""
-        parser = create_parser()
-        args = parser.parse_args(["-v", "test"])
+        args = parser.parse_args(
+            [
+                "-i",
+                "-v",
+                "-A",
+                "3",
+                "-B",
+                "2",
+                "-C",
+                "1",
+                "--color",
+                "always",
+                "--no-live",
+                "--startup-time",
+                "2025-01-01 00:00:00",
+                "--file",
+                "test.log",
+                "pattern1",
+                "pattern2",
+            ]
+        )
+        assert args.ignore_case is True
         assert args.invert_match is True
-
-    def test_parser_context_options(self):
-        """Test parser context options."""
-        parser = create_parser()
-        args = parser.parse_args(["-A", "3", "-B", "2", "-C", "1", "test"])
         assert args.after_context == 3
         assert args.before_context == 2
         assert args.context == 1
+        assert args.color == "always"
+        assert args.no_live is True
+        assert args.file == "test.log"
+        assert args.patterns == ["pattern1", "pattern2"]
 
+    def test_help_exits(self):
+        with pytest.raises(SystemExit):
+            create_parser().parse_args(["--help"])
 
-class TestImportAndBasicFunctionality:
-    """Test that imports work and basic functionality is accessible."""
-
-    def test_imports_successful(self):
-        """Test that all required imports are successful."""
-        # All imports should succeed (tested by the imports at top of file)
-        assert LogSearcher is not None
-        assert parse_timestamp is not None
-        assert detect_timestamp_format is not None
-        assert main is not None
-        assert create_parser is not None
-
-    def test_logsearcher_instantiation(self):
-        """Test that LogSearcher can be instantiated."""
-        ls = LogSearcher(["test_pattern"])
-        assert ls is not None
-
-    def test_basic_functionality_accessible(self):
-        """Test that basic functionality is accessible."""
-        ls = LogSearcher(["test"])
-
-        # Check that key methods exist
-        assert hasattr(ls, "search_file")
-        assert hasattr(ls, "search_stdin")
-        assert hasattr(ls, "search_stream")
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
+    def test_version_exits(self):
+        with pytest.raises(SystemExit):
+            create_parser().parse_args(["--version"])

@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10', 3.11, 3.12]
+        python-version: [3.8, 3.9, '3.10', 3.11, 3.12]
     
     steps:
     - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
         pytest --cov=src/loggrep --cov-report=term --cov-report=xml:coverage_py${{ matrix.python-version }}.xml -v
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         file: coverage_py${{ matrix.python-version }}.xml
         flags: python${{ matrix.python-version }}
@@ -50,31 +50,27 @@ jobs:
     
     - name: Build Docker images
       run: |
-        docker-compose build
-    
-    - name: Test Python 3.7
-      run: |
-        docker-compose run --rm test_py37
+        docker compose build
     
     - name: Test Python 3.8
       run: |
-        docker-compose run --rm test_py38
+        docker compose run --rm test_py38
     
     - name: Test Python 3.9
       run: |
-        docker-compose run --rm test_py39
+        docker compose run --rm test_py39
     
     - name: Test Python 3.10
       run: |
-        docker-compose run --rm test_py310
+        docker compose run --rm test_py310
     
     - name: Test Python 3.11
       run: |
-        docker-compose run --rm test_py311
+        docker compose run --rm test_py311
     
     - name: Test Python 3.12
       run: |
-        docker-compose run --rm test_py312
+        docker compose run --rm test_py312
 
   # Code quality checks
   quality:
@@ -127,4 +123,4 @@ jobs:
       run: |
         pip install dist/*.whl
         loggrep --help
-        echo "2025-10-11 16:00:00 [ERROR] Test message" | loggrep "ERROR"
+        echo "2025-10-11 16:00:00 [ERROR] Test message" | loggrep "ERROR" --no-live

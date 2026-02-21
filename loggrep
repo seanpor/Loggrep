@@ -2,6 +2,11 @@
 """Console script entry point for loggrep."""
 import sys
 import os
+from datetime import datetime
+
+# Capture startup time IMMEDIATELY, before any imports or processing
+# This is critical for live mode to work with piped input
+LOGGREP_STARTUP_TIME = datetime.now()
 
 # Add src directory to path for development
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -9,4 +14,5 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from loggrep.cli import main
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Pass the early startup time to main
+    sys.exit(main(startup_time_override=LOGGREP_STARTUP_TIME))
