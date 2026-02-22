@@ -346,13 +346,20 @@ class TestTimestampParsing:
             os.unlink(temp_file)
 
     def test_no_startup_time_shows_future_entries(self):
-        """Without --startup-time, file mode defaults to now and shows future entries."""
-        data, _, _ = make_syslog_data()
-        temp_file = create_temp_logfile(data)
+        """Without --startup-time, file mode defaults to now — past filtered, future shown."""
+        now = datetime.now()
+        past = now - timedelta(hours=1)
+        future = now + timedelta(seconds=60)
+
+        log_data = (
+            f"{past.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Old error should be filtered\n"
+            f"{future.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Future error should appear\n"
+        )
+        temp_file = create_temp_logfile(log_data)
         try:
-            result = run_loggrep(["service", "--file", temp_file])
-            lines = result.stdout.strip().split("\n")
-            assert len(lines) > 5
+            result = run_loggrep(["ERROR", "--file", temp_file])
+            assert "Future error should appear" in result.stdout
+            assert "Old error should be filtered" not in result.stdout
         finally:
             os.unlink(temp_file)
 
@@ -363,13 +370,13 @@ class TestTimestampParsing:
         future_time = now + timedelta(seconds=60)
 
         log_data = (
-            f"{old_time.strftime('%Y-%m-%d %H:%M:%S')} [INFO] Old message should be filtered\n"
-            f"{future_time.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Recent message should appear\n"
+            f"{old_time.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Old error should be filtered\n"
+            f"{future_time.strftime('%Y-%m-%d %H:%M:%S')} [ERROR] Recent error should appear\n"
         )
 
         result = run_loggrep(["ERROR"], input_data=log_data)
-        assert "Recent message should appear" in result.stdout
-        assert "Old message should be filtered" not in result.stdout
+        assert "Recent error should appear" in result.stdout
+        assert "Old error should be filtered" not in result.stdout
 
     def test_file_defaults_to_now_filters_past(self):
         """Test that file mode filters out past entries by default."""
