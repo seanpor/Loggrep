@@ -230,7 +230,7 @@ This will run the test suite in isolated containers for Python 3.8, 3.10, 3.12, 
 We welcome contributions! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
 
 ### Code Quality & Testing
-- **Comprehensive test suite**: 100 tests (48 integration + 52 unit) with 91% branch coverage
+- **Comprehensive test suite**: 110 tests (48 integration + 62 unit) with 100% code coverage
 - **Hybrid testing strategy**: Real CLI testing + direct module imports for coverage
 - **Multi-platform CI/CD**: Automated testing across Linux, macOS, and Windows
 - **Multi-version testing**: Python 3.8-3.14 support via Docker containers  

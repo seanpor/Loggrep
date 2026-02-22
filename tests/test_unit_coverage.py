@@ -225,6 +225,20 @@ class TestDetermineColorUsage:
             mock_stdout.isatty.return_value = False
             assert determine_color_usage("auto") is False
 
+    def test_auto_no_colorama(self):
+        """When colorama is not installed, auto returns False (cli.py:142-143)."""
+        import builtins
+
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "colorama":
+                raise ImportError("no colorama")
+            return original_import(name, *args, **kwargs)
+
+        with patch.object(builtins, "__import__", side_effect=mock_import):
+            assert determine_color_usage("auto") is False
+
 
 # ===================================================================
 # CLI — _file_error
@@ -343,6 +357,52 @@ class TestMainErrors:
                 os.chmod(f.name, 0o644)
                 os.unlink(f.name)
 
+    def test_broken_pipe(self):
+        """BrokenPipeError returns 0 (cli.py:214-215)."""
+        with patch("loggrep.cli.LogSearcher") as MockSearcher:
+            instance = MockSearcher.return_value
+            instance.search_file.return_value = iter(["line\n"])
+            with patch("builtins.print", side_effect=BrokenPipeError):
+                result = main(["test", "--file", "dummy.log", "--no-live"])
+                assert result == 0
+
+    def test_unicode_decode_error(self, capsys):
+        """UnicodeDecodeError returns 2 with helpful message (cli.py:216-217)."""
+        with patch("loggrep.cli.LogSearcher") as MockSearcher:
+            instance = MockSearcher.return_value
+            instance.search_file.side_effect = UnicodeDecodeError(
+                "utf-8", b"\xff", 0, 1, "invalid"
+            )
+            result = main(["test", "--file", "dummy.log", "--no-live"])
+            assert result == 2
+            assert "Unable to decode" in capsys.readouterr().err
+
+    def test_non_regex_value_error(self, capsys):
+        """Non-regex ValueError prints generic error (cli.py:233)."""
+        with patch("loggrep.cli.LogSearcher") as MockSearcher:
+            MockSearcher.side_effect = ValueError("something went wrong")
+            result = main(["test", "--file", "dummy.log", "--no-live"])
+            assert result == 1
+            assert "something went wrong" in capsys.readouterr().err
+
+    def test_keyboard_interrupt(self, capsys):
+        """KeyboardInterrupt returns 130 (cli.py:235-237)."""
+        with patch("loggrep.cli.LogSearcher") as MockSearcher:
+            MockSearcher.side_effect = KeyboardInterrupt()
+            result = main(["test", "--file", "dummy.log", "--no-live"])
+            assert result == 130
+            assert "Interrupted" in capsys.readouterr().err
+
+    def test_unexpected_exception(self, capsys):
+        """Unexpected exceptions return 1 with bug report link (cli.py:238-244)."""
+        with patch("loggrep.cli.LogSearcher") as MockSearcher:
+            MockSearcher.side_effect = RuntimeError("boom")
+            result = main(["test", "--file", "dummy.log", "--no-live"])
+            assert result == 1
+            err = capsys.readouterr().err
+            assert "Unexpected error" in err
+            assert "github.com" in err
+
 
 # ===================================================================
 # Timestamps — detect_timestamp_format
@@ -413,6 +473,82 @@ class TestParseTimestamp:
         result = parse_timestamp("2025-06-15T12:00:00+05:00")
         assert result is not None
         assert result.tzinfo is None  # Should be naive
+
+    def test_timezone_aware_via_dateutil(self):
+        """Timezone-aware datetimes are made naive (timestamps.py:129)."""
+        # RFC 2822 format — not caught by any fast_parse, dateutil returns tz-aware
+        result = parse_timestamp("Fri, 15 Jun 2025 12:00:00 +0500")
+        assert result is not None
+        assert result.tzinfo is None
+        assert result == datetime(2025, 6, 15, 12, 0, 0)
+
+
+# ===================================================================
+# Core — search_stdin (core.py:135-138)
+# ===================================================================
+
+
+class TestSearchStdin:
+    def test_search_stdin_basic(self):
+        """search_stdin reads from sys.stdin.buffer (core.py:135-138)."""
+        searcher = LogSearcher(["hello"])
+        searcher.startup_time = None
+        data = b"hello world\ngoodbye world\nhello again\n"
+        mock_stdin = type("MockStdin", (), {"buffer": io.BytesIO(data)})()
+        with patch("sys.stdin", mock_stdin):
+            results = list(searcher.search_stdin())
+        assert len(results) == 2
+        assert "hello world" in results[0]
+        assert "hello again" in results[1]
+
+
+# ===================================================================
+# Core — colorama ImportError (core.py:21-22)
+# ===================================================================
+
+
+class TestColoramaFallback:
+    def test_color_available_false_without_colorama(self):
+        """When colorama is not installed, COLOR_AVAILABLE is False."""
+        import builtins
+        import importlib
+
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "colorama":
+                raise ImportError("no colorama")
+            return original_import(name, *args, **kwargs)
+
+        with patch.object(builtins, "__import__", side_effect=mock_import):
+            # Remove cached module so re-import triggers the except branch
+            saved = sys.modules.pop("loggrep.core", None)
+            try:
+                import loggrep.core
+
+                importlib.reload(loggrep.core)
+                assert loggrep.core.COLOR_AVAILABLE is False
+            finally:
+                # Restore the module
+                if saved is not None:
+                    sys.modules["loggrep.core"] = saved
+
+
+# ===================================================================
+# CLI — main() stdin path (cli.py:188)
+# ===================================================================
+
+
+class TestMainStdin:
+    def test_stdin_path(self, capsys):
+        """main() calls search_stdin when no --file is given (cli.py:188)."""
+        with patch("loggrep.cli.LogSearcher") as MockSearcher:
+            instance = MockSearcher.return_value
+            instance.search_stdin.return_value = iter(["matched line\n"])
+            result = main(["test", "--no-live"])
+            assert result == 0
+            instance.search_stdin.assert_called_once()
+            assert "matched line" in capsys.readouterr().out
 
 
 # ===================================================================
