@@ -261,40 +261,56 @@ class TestFileError:
 
 
 class TestMainStartupTime:
-    def test_no_live_disables_filtering(self):
-        """--no-live sets startup_time to None."""
+    def test_no_live_disables_filtering(self, capsys):
+        """--no-live shows entries that would normally be filtered by startup time."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
             past = _past_iso(3600)
             f.write(f"{past} ERROR old line\n")
             f.flush()
             try:
+                # Without --no-live, past entries are filtered out
+                result = main(["ERROR", "--file", f.name])
+                assert result == 0
+                assert "old line" not in capsys.readouterr().out
+
+                # With --no-live, past entries are shown
                 result = main(["ERROR", "--file", f.name, "--no-live"])
                 assert result == 0
+                assert "old line" in capsys.readouterr().out
             finally:
                 os.unlink(f.name)
 
-    def test_startup_time_override(self):
+    def test_startup_time_override(self, capsys):
         """startup_time_override is used when no --startup-time is given."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
-            future = _future_iso(600)
-            f.write(f"{future} ERROR future line\n")
+            # Write a line 30 seconds in the past
+            past = _past_iso(30)
+            f.write(f"{past} ERROR past line\n")
             f.flush()
             try:
-                override = datetime.now() - timedelta(seconds=10)
+                # Default (now) filters it out — it's in the past
+                result = main(["ERROR", "--file", f.name])
+                assert result == 0
+                assert "past line" not in capsys.readouterr().out
+
+                # Override to 60 seconds ago — now the line is after startup
+                override = datetime.now() - timedelta(seconds=60)
                 result = main(
                     ["ERROR", "--file", f.name],
                     startup_time_override=override,
                 )
                 assert result == 0
+                assert "past line" in capsys.readouterr().out
             finally:
                 os.unlink(f.name)
 
-    def test_explicit_startup_time_takes_priority(self):
-        """--startup-time overrides everything else."""
+    def test_explicit_startup_time_takes_priority(self, capsys):
+        """--startup-time overrides startup_time_override and default."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as f:
-            f.write("2025-06-15 12:00:00 ERROR test\n")
+            f.write("2025-06-15 12:00:00 ERROR test line\n")
             f.flush()
             try:
+                # With --startup-time before the entry, line is shown
                 result = main(
                     [
                         "ERROR",
@@ -305,6 +321,12 @@ class TestMainStartupTime:
                     ]
                 )
                 assert result == 0
+                assert "test line" in capsys.readouterr().out
+
+                # Without --startup-time, default is now (2026) so 2025 line is filtered
+                result = main(["ERROR", "--file", f.name])
+                assert result == 0
+                assert "test line" not in capsys.readouterr().out
             finally:
                 os.unlink(f.name)
 
